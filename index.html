@@ -1,0 +1,1627 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ikan Makan Ikan</title>
+<style>
+  :root { --panel: rgba(4, 30, 48, .55); --line: rgba(160, 230, 255, .25); --txt: #e8fbff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #072a46; color: var(--txt);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-touch-callout: none; }
+  canvas#game { display: block; touch-action: none; }
+  .hidden { display: none !important; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  #stats { position: absolute; top: 12px; left: 12px; padding: 10px 14px; width: 230px; }
+  #specName { font-weight: 800; font-size: 17px; letter-spacing: .3px; }
+  #sizeTxt { font-size: 12px; opacity: .75; margin-bottom: 6px; }
+  .bar { display: flex; align-items: center; gap: 8px; margin-top: 5px; font-size: 13px; }
+  .bar span { width: 18px; text-align: center; }
+  .track { flex: 1; height: 10px; border-radius: 6px; background: rgba(0,0,0,.4); overflow: hidden; }
+  .fill { height: 100%; width: 50%; border-radius: 6px; transition: width .15s; }
+  .fill.hp { background: linear-gradient(90deg,#ff3d5a,#ff7a7a); }
+  .fill.st { background: linear-gradient(90deg,#ffc42e,#fff07a); }
+  .fill.gr { background: linear-gradient(90deg,#2ee38a,#9dffcf); }
+  .fill.boss { background: linear-gradient(90deg,#8a3cff,#ff3df0); }
+
+  #scorePanel { position: absolute; top: 12px; right: 12px; padding: 10px; text-align: right; font-size: 13px; }
+  #scorePanel b { font-size: 16px; }
+  #radar { display: block; margin-top: 8px; width: 130px; height: 130px; border-radius: 50%; background: rgba(0,20,35,.55); border: 1px solid var(--line); }
+
+  #target { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); padding: 7px 14px; width: 220px; text-align: center; font-size: 13px; font-weight: 700; }
+  #target .track, #bossBar .track { margin-top: 5px; }
+  #bossBar { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); padding: 7px 14px; width: min(360px, 60vw); text-align: center; font-size: 14px; font-weight: 900; letter-spacing: 3px; color: #e7b8ff; }
+  #cross { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,.6); }
+  #evolve { pointer-events: auto; position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%);
+    padding: 12px 22px; font-size: 16px; font-weight: 800; color: #04263a; background: linear-gradient(90deg,#5dffb0,#b5ff6a);
+    border: none; border-radius: 999px; box-shadow: 0 0 24px rgba(120,255,180,.6); animation: pulse 1.2s infinite; cursor: pointer; white-space: nowrap; }
+  @keyframes pulse { 50% { transform: translateX(-50%) scale(1.06); } }
+  #feed { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .toast { font-weight: 800; font-size: 16px; text-shadow: 0 2px 6px rgba(0,0,0,.7); animation: rise 1.8s forwards; max-width: 92vw; text-align: center; }
+  @keyframes rise { 0% { opacity: 0; transform: translateY(10px) scale(.9); } 12% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }
+  #hint { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .7; text-align: center; padding: 0 16px; width: 100%; }
+  #hurt { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(255,0,30,.65) 100%); }
+  #hatch { position: fixed; left: 50%; bottom: 14%; transform: translateX(-50%); padding: 14px 22px; width: min(340px, 90vw); text-align: center; pointer-events: none; }
+  #hatch .t { font-weight: 800; font-size: 18px; margin-bottom: 4px; }
+  #hatch .s { font-size: 13px; opacity: .8; margin-bottom: 8px; }
+
+  .overlay { position: fixed; inset: 0; display: flex; padding: 16px; overflow-y: auto;
+    background: radial-gradient(ellipse at center, rgba(4,40,64,.35), rgba(2,14,26,.85)); }
+  .card { max-width: 560px; width: 100%; padding: 24px 22px; text-align: center; margin: auto; }
+  h1 { margin: 0; font-size: clamp(32px, 8vw, 54px); line-height: 1; letter-spacing: 1px;
+    background: linear-gradient(180deg,#fff,#7fe3ff); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 4px 30px rgba(80,200,255,.35); }
+  h2 { margin: 0 0 4px; font-size: 24px; }
+  .sub { margin: 8px 0 12px; opacity: .85; }
+  .keys { font-size: 13px; opacity: .8; line-height: 1.7; margin-bottom: 16px; }
+  .btn { pointer-events: auto; font: inherit; font-size: 18px; font-weight: 800; padding: 13px 34px; border: none; border-radius: 999px; cursor: pointer;
+    color: #04263a; background: linear-gradient(90deg,#4fd8ff,#7dffb0); box-shadow: 0 6px 24px rgba(80,220,255,.4); }
+  .btn:active { transform: scale(.97); }
+  .stat { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  #deadTitle { font-size: 26px; font-weight: 800; margin-bottom: 14px; color: #ff8a9a; }
+  .cards { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 12px 0 16px; }
+  .card2 { flex: 1 1 190px; max-width: 240px; padding: 12px; border-radius: 14px; border: 2px solid var(--line); background: rgba(255,255,255,.06);
+    color: var(--txt); font: inherit; text-align: left; cursor: pointer; }
+  .card2.sel, .card2:hover { border-color: #7dffb0; background: rgba(125,255,176,.12); }
+  .sw { height: 30px; width: 70%; border-radius: 50% 35% 35% 50% / 50%; margin-bottom: 8px; box-shadow: inset 0 -6px 10px rgba(0,0,0,.25); }
+  .cn { font-weight: 800; font-size: 16px; }
+  .cd { font-size: 12px; opacity: .75; min-height: 30px; margin: 2px 0 6px; }
+  .sb { display: flex; align-items: center; gap: 6px; font-size: 11px; margin-top: 3px; }
+  .sb span { width: 66px; opacity: .8; }
+  .sb i { flex: 1; height: 6px; background: rgba(0,0,0,.4); border-radius: 4px; overflow: hidden; }
+  .sb b { display: block; height: 100%; background: #4fd8ff; }
+
+  #touch { position: fixed; inset: 0; pointer-events: none; }
+  #joy { pointer-events: auto; position: absolute; left: 22px; bottom: 30px; width: 130px; height: 130px; border-radius: 50%;
+    background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.25); touch-action: none; }
+  #knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: rgba(255,255,255,.35); }
+  .tb { pointer-events: auto; position: absolute; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); color: #fff; font-weight: 800;
+    background: rgba(255,255,255,.12); touch-action: none; font-size: 13px; }
+  .tb.on { background: rgba(255,255,255,.35); }
+  #btnBite { right: 24px; bottom: 40px; width: 88px; height: 88px; font-size: 15px; background: rgba(255,80,100,.35); }
+  #btnBoost { right: 122px; bottom: 26px; width: 64px; height: 64px; background: rgba(255,200,60,.3); }
+  #btnUp { right: 36px; bottom: 148px; width: 54px; height: 54px; }
+  #btnDown { right: 100px; bottom: 112px; width: 46px; height: 46px; }
+  #btnPause { left: 22px; bottom: 176px; width: 42px; height: 42px; font-size: 12px; }
+  @media (max-width: 600px) {
+    #stats { width: 170px; padding: 8px 10px; } #specName { font-size: 15px; } #radar { width: 92px; height: 92px; }
+    #hint { display: none; } #evolve { bottom: 190px; font-size: 14px; } #bossBar { top: 186px; } #target { top: 186px; width: 60vw; }
+    .card2 { flex-basis: 140px; padding: 10px; } .cd { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="stats" class="panel">
+    <div id="specName">Ikan Mas Koki</div>
+    <div id="sizeTxt">0.50 m</div>
+    <div class="bar"><span>❤</span><div class="track"><div id="hpFill" class="fill hp"></div></div></div>
+    <div class="bar"><span>⚡</span><div class="track"><div id="stFill" class="fill st"></div></div></div>
+    <div class="bar"><span>🧬</span><div class="track"><div id="grFill" class="fill gr"></div></div></div>
+  </div>
+  <div id="scorePanel" class="panel">
+    <div>Skor <b id="score">0</b></div>
+    <div>Dimakan <b id="eaten">0</b></div>
+    <canvas id="radar" width="150" height="150"></canvas>
+  </div>
+  <div id="target" class="panel hidden"><div id="targetName"></div><div class="track"><div id="targetFill" class="fill hp"></div></div></div>
+  <div id="bossBar" class="panel hidden">☠ LEVIATHAN ☠<div class="track"><div id="bossFill" class="fill boss"></div></div></div>
+  <div id="cross"></div>
+  <button id="evolve" class="hidden"></button>
+  <div id="feed"></div>
+  <div id="hint">W maju • Mouse arahkan (atas/bawah) • Klik/F gigit • Shift ngebut • Spasi naik • C turun • E evolusi • M suara</div>
+</div>
+<div id="hurt"></div>
+<div id="hatch" class="panel hidden">
+  <div class="t">🥚 Telurmu siap menetas!</div>
+  <div class="s" id="hatchHint">Tekan tombol apa saja / klik berulang kali</div>
+  <div class="track"><div id="hatchFill" class="fill gr" style="width:0%"></div></div>
+</div>
+
+<div id="touch" class="hidden">
+  <div id="joy"><div id="knob"></div></div>
+  <button class="tb" id="btnBite">GIGIT</button>
+  <button class="tb" id="btnBoost">⚡</button>
+  <button class="tb" id="btnUp">▲</button>
+  <button class="tb" id="btnDown">▼</button>
+  <button class="tb" id="btnPause">❚❚</button>
+</div>
+
+<div id="start" class="overlay">
+  <div class="card panel">
+    <h1>IKAN MAKAN IKAN</h1>
+    <div class="sub">Menetas dari telur, makan yang kecil, hindari yang besar, berevolusi, lalu taklukkan Leviathan di palung gelap!</div>
+    <div style="font-weight:700">Pilih ikan awalmu</div>
+    <div class="cards" id="starterCards"></div>
+    <div class="keys" id="keysTxt">
+      <b>W</b> maju • <b>Mouse</b> arahkan (gerak ke bawah = menukik) • <b>Klik / F</b> gigit<br>
+      <b>Shift</b> ngebut • <b>Spasi</b> naik • <b>C</b> turun • <b>E</b> evolusi
+    </div>
+    <button class="btn" id="playBtn">MAIN</button>
+    <div class="sub" id="bestTxt" style="margin-top:12px;font-size:13px"></div>
+  </div>
+</div>
+
+<div id="evo" class="overlay hidden">
+  <div class="card panel">
+    <h2>🧬 Pilih Evolusi</h2>
+    <div class="sub" id="evoSub">Tahap berikutnya</div>
+    <div class="cards" id="evoCards"></div>
+    <div class="sub" style="font-size:12px">Klik kartu untuk berevolusi</div>
+    <button class="btn" id="laterBtn" style="font-size:14px;padding:9px 22px;background:rgba(255,255,255,.15);color:var(--txt);box-shadow:none">Nanti saja</button>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="card panel"><h1 style="font-size:40px">JEDA</h1><div class="sub">Lautan menunggumu…</div><button class="btn" id="resumeBtn">LANJUT</button></div>
+</div>
+
+<div id="dead" class="overlay hidden">
+  <div class="card panel">
+    <div id="deadTitle">Kamu dimakan!</div>
+    <div class="stat"><span>Spesies terakhir</span><b id="dSpec"></b></div>
+    <div class="stat"><span>Ukuran</span><b id="dSize"></b></div>
+    <div class="stat"><span>Ikan dimakan</span><b id="dEaten"></b></div>
+    <div class="stat"><span>Skor</span><b id="dScore"></b></div>
+    <div class="stat" style="border:none"><span>Rekor</span><b id="dBest"></b></div>
+    <div style="margin-top:18px"><button class="btn" id="againBtn">MAIN LAGI</button></div>
+  </div>
+</div>
+
+<script type="importmap">{
+  "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" },
+  "integrity": { "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js": "sha384-61S/Nu32S3E5+n+KpCOTb2eRYps6fVKm+9Gz1QBvSePFthb46f063Aa/qe/lykFZ" }
+}</script>
+<script type="module">
+import * as THREE from 'three';
+
+const $ = id => document.getElementById(id);
+const V3 = THREE.Vector3;
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const IS_TOUCH = matchMedia('(any-pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+const BLOOD = 0xb3001b;
+
+// Dunia: dataran dangkal di barat, palung gelap di timur (x > 200)
+const WORLD = 420, TOP = 150, TRENCH_X = 240;
+const baseH = (x, z) => Math.sin(x * 0.021) * 7 + Math.cos(z * 0.017) * 6 + Math.sin((x + z) * 0.043) * 3
+  + Math.sin(x * 0.11 + z * 0.07) * 0.9 + Math.cos(x * 0.07 - z * 0.13) * 0.9 - 4;
+const floorH = (x, z) => baseH(x, z) - 160 * smooth(200, 280, x);
+
+// ---------- Spesies ----------
+// speed / bite / tough = statistik; deep = hanya di palung; lure = umpan bercahaya
+const SPECIES = {
+  teri:      { name: 'Ikan Teri', base: .18, w: .22, h: .26, color: 0x8fb4c8, belly: 0xf2f7fa, fin: 0xb8d4e0, tail: 'fork', dorsal: .12, dType: 'tri', speed: 1.25, bite: .2, school: true, eye: .07 },
+  neon:      { name: 'Ikan Neon', base: .3, w: .26, h: .34, color: 0x1fa9ff, belly: 0xff3355, fin: 0x9fdfff, tail: 'fork', dorsal: .14, dType: 'tri', speed: 1.2, bite: .3, school: true, eye: .07 },
+  koki:      { name: 'Ikan Mas Koki', desc: 'Seimbang dan tangguh untuk pemula.', base: .5, w: .42, h: .58, color: 0xff7a1a, belly: 0xffd37a, fin: 0xffa04d, tail: 'fan', tailS: 1.3, dorsal: .28, dType: 'long', speed: 1, bite: 1, tough: 1.1, eye: .075 },
+  badut:     { name: 'Ikan Badut', desc: 'Lincah dan cepat, gigitan lebih lemah.', base: .6, w: .36, h: .48, color: 0xff6a00, belly: 0xff8c33, fin: 0xff7a1a, tail: 'fan', dorsal: .2, dType: 'long', speed: 1.25, bite: .8, tough: .9, stripes: [.22, -.02, -.3], eye: .07 },
+  piranha:   { name: 'Piranha', desc: 'Gigitan sangat sakit.', base: .8, w: .36, h: .66, color: 0x5e6b78, belly: 0xe0402a, fin: 0x6b5a50, tail: 'fork', dorsal: .18, dType: 'tri', speed: 1.1, bite: 1.5, tough: .9, carn: true, eye: .065 },
+  kakap:     { name: 'Kakap Merah', desc: 'Cepat dan cukup kuat.', base: 1.1, w: .32, h: .5, color: 0xd8344a, belly: 0xffb3b3, fin: 0xe0606a, tail: 'fork', dorsal: .22, dType: 'long', speed: 1.25, bite: 1, tough: 1.1, eye: .06 },
+  bass:      { name: 'Ikan Bass', desc: 'Pemburu serba bisa.', base: 1.3, w: .34, h: .46, color: 0x5c7a2e, belly: 0xe8e0b0, fin: 0x6d8a3a, tail: 'fan', dorsal: .22, dType: 'long', speed: 1.1, bite: 1.2, tough: 1, carn: true, spots: 0x2e4015, eye: .055 },
+  kerapu:    { name: 'Ikan Kerapu', desc: 'Lambat tapi sangat tahan banting.', base: 1.9, w: .42, h: .5, color: 0x7a5a3a, belly: 0xc8a878, fin: 0x6a4a2a, tail: 'fan', dorsal: .2, dType: 'long', speed: .85, bite: 1.3, tough: 1.5, carn: true, spots: 0x3a2814, eye: .05 },
+  barakuda:  { name: 'Barakuda', desc: 'Pemangsa ramping bergigi tajam.', base: 2.1, w: .16, h: .2, color: 0x7d93a6, belly: 0xf0f4f8, fin: 0x5d7386, tail: 'fork', dorsal: .14, dType: 'tri', speed: 1.4, bite: 1.3, tough: .9, carn: true, spots: 0x3a4a5a, eye: .04, taper: .9 },
+  todak:     { name: 'Ikan Todak', desc: 'Perenang tercepat dengan pedang.', base: 2.1, w: .18, h: .24, color: 0x24476b, belly: 0xdfe8f0, fin: 0x1d3550, tail: 'crescent', dorsal: .3, dType: 'tri', speed: 1.6, bite: 1.1, tough: .85, carn: true, sword: true, eye: .04 },
+  tuna:      { name: 'Ikan Tuna', desc: 'Stamina dan kecepatan tinggi.', base: 3.4, w: .3, h: .36, color: 0x1c3a6e, belly: 0xdfe8f0, fin: 0xf0c030, tail: 'crescent', tailS: 1.1, dorsal: .2, dType: 'tri', speed: 1.35, bite: 1, tough: 1.1, carn: true, eye: .04, taper: 1.15 },
+  hiukarang: { name: 'Hiu Karang', desc: 'Hiu kecil yang ganas.', base: 3.4, w: .2, h: .22, color: 0x6d7c88, belly: 0xe8ecef, fin: 0x4d5c68, tail: 'shark', dorsal: .22, dType: 'shark', speed: 1.15, bite: 1.4, tough: 1.1, carn: true, eye: .03 },
+  hiuputih:  { name: 'Hiu Putih', desc: 'Raja gigitan.', base: 5.4, w: .24, h: .26, color: 0x5f6f7c, belly: 0xf2f2f2, fin: 0x4a5966, tail: 'shark', dorsal: .26, dType: 'shark', speed: 1.15, bite: 1.6, tough: 1.1, carn: true, eye: .028 },
+  hiumacan:  { name: 'Hiu Macan', desc: 'Belang, kuat, dan tahan lama.', base: 5.4, w: .25, h: .27, color: 0x7a7f62, belly: 0xeeeedd, fin: 0x575d48, tail: 'shark', dorsal: .25, dType: 'shark', speed: 1.05, bite: 1.5, tough: 1.35, carn: true, stripes: [.25, .12, 0, -.12, -.24], stripeCol: 0x3a3d2c, eye: .028 },
+  orca:      { name: 'Paus Orca', desc: 'Pemburu cerdas dan cepat.', base: 8.6, w: .26, h: .28, color: 0x111418, belly: 0xf5f5f5, fin: 0x111418, tail: 'fluke', dorsal: .4, dType: 'orca', speed: 1.15, bite: 1.6, tough: 1.3, carn: true, patch: true, eye: .022 },
+  sperma:    { name: 'Paus Sperma', desc: 'Kepala raksasa, sangat tangguh.', base: 8.6, w: .26, h: .32, color: 0x4a4f57, belly: 0x6b717a, fin: 0x41464d, tail: 'fluke', dorsal: .08, dType: 'orca', speed: .9, bite: 1.5, tough: 1.75, carn: true, blunt: true, eye: .02 },
+  megalodon: { name: 'Megalodon', desc: 'Predator puncak lautan.', base: 14, w: .26, h: .28, color: 0x3d4650, belly: 0xd8dcdf, fin: 0x2e363e, tail: 'shark', dorsal: .26, dType: 'shark', speed: 1.1, bite: 2, tough: 1.5, carn: true, eye: .025 },
+  // laut dalam
+  angler:    { name: 'Ikan Sungut Ganda', base: .9, w: .45, h: .5, color: 0x2a1f2a, belly: 0x3a2a33, fin: 0x2a1f2a, tail: 'fan', dorsal: .1, dType: 'long', speed: .7, bite: 1.3, carn: true, deep: true, lure: true, eye: .05 },
+  naga:      { name: 'Ikan Naga', base: 1.6, w: .16, h: .2, color: 0x0d0f14, belly: 0x1a1d26, fin: 0x101318, tail: 'fork', dorsal: .08, dType: 'tri', speed: 1.1, bite: 1.3, carn: true, deep: true, lure: true, eye: .05 },
+  belut:     { name: 'Belut Laut Dalam', base: 2.8, w: .1, h: .12, color: 0x2b2f3a, belly: 0x5a5f6e, fin: 0x2b2f3a, tail: 'fan', dorsal: .05, dType: 'long', speed: 1, bite: 1.2, carn: true, deep: true, taper: .7, eye: .03 },
+  goblin:    { name: 'Hiu Goblin', base: 4.6, w: .2, h: .22, color: 0xb98a8f, belly: 0xd8b2b5, fin: 0xa47a80, tail: 'shark', dorsal: .18, dType: 'shark', speed: 1, bite: 1.5, carn: true, deep: true, eye: .025 },
+  leviathan: { name: 'Leviathan', base: 40, w: .14, h: .16, color: 0x1a1030, belly: 0x3c2a5a, fin: 0x2a1848, tail: 'fork', dorsal: .2, dType: 'shark', speed: 1, bite: 2.5, carn: true, deep: true, boss: true, glowEyes: true, spots: 0x5a2cc0, eye: .02, taper: .8 },
+};
+const TIERS = [['koki', 'badut'], ['piranha', 'kakap'], ['bass', 'kerapu'], ['barakuda', 'todak'], ['tuna', 'hiukarang'], ['hiuputih', 'hiumacan'], ['orca', 'sperma'], ['megalodon']];
+const TIER_BASE = [.5, .8, 1.3, 2.1, 3.4, 5.4, 8.6, 14];
+const SHALLOW_LIST = Object.values(SPECIES).filter(s => !s.deep);
+const DEEP_LIST = Object.values(SPECIES).filter(s => s.deep && !s.boss);
+
+// ---------- Renderer & scene ----------
+const canvas = $('game');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, IS_TOUCH ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x2b9cc4, 0.012);
+scene.background = new THREE.Color(0x2b9cc4);
+const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.05, 2000);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+const hemi = new THREE.HemisphereLight(0xbfefff, 0x23485a, 1.4); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(30, 100, 20); scene.add(sun);
+const plight = new THREE.PointLight(0xbfefff, 0, 40, 1); scene.add(plight);
+
+const uTime = { value: 0 };
+function addCaustics(mat, strength) {
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uTime = uTime;
+    sh.vertexShader = 'varying vec3 vWPos;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+        vWPos = (modelMatrix * instanceMatrix * vec4(position, 1.0)).xyz;
+      #else
+        vWPos = (modelMatrix * vec4(position, 1.0)).xyz;
+      #endif`);
+    sh.fragmentShader = `uniform float uTime; varying vec3 vWPos;
+      float caus(vec2 p, float t) {
+        p *= 0.45;
+        vec2 q = p + vec2(sin(p.y * 1.3 + t * .6), cos(p.x * 1.1 - t * .5)) * .9;
+        float a = abs(sin(q.x * 2.0 + t * .4) + sin(q.y * 2.3 - t * .3));
+        vec2 r = p * 1.7 + vec2(cos(p.y * .9 - t * .4), sin(p.x * 1.2 + t * .5)) * 1.1;
+        float b = abs(sin(r.x * 1.8 - t * .5) + sin(r.y * 1.6 + t * .45));
+        return pow(1.0 - clamp(a, 0., 1.), 5.0) * .7 + pow(1.0 - clamp(b, 0., 1.), 5.0) * .6;
+      }\n` + sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        totalEmissiveRadiance += vec3(.55, .85, 1.0) * caus(vWPos.xz, uTime) * ${strength.toFixed(2)}
+          * clamp(normal.y * 0.5 + 0.6, 0.0, 1.0) * clamp((vWPos.y + 50.0) / 40.0, 0.0, 1.0);`);
+  };
+  mat.customProgramCacheKey = () => 'caus' + strength;
+  return mat;
+}
+
+function mergeGeos(geos) {
+  const parts = geos.map(g => (g.index ? g.toNonIndexed() : g).attributes.position.array);
+  const arr = new Float32Array(parts.reduce((n, a) => n + a.length, 0)); let o = 0;
+  for (const a of parts) { arr.set(a, o); o += a.length; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr, 3)); g.computeVertexNormals(); return g;
+}
+
+// ---------- Tekstur titik ----------
+const dotTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.5, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+})();
+
+// ---------- Lingkungan ----------
+{
+  const S = WORLD * 2 + 300;
+  const g = new THREE.PlaneGeometry(S, S, 200, 200); g.rotateX(-Math.PI / 2);
+  const p = g.attributes.position, cols = [], c = new THREE.Color(), a = new THREE.Color(0xd9c38f), b = new THREE.Color(0xa88f5e), dk = new THREE.Color(0x2a2a34);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i), y = floorH(x, z); p.setY(i, y);
+    c.copy(a).lerp(b, 0.5 + 0.5 * Math.sin(x * 0.3 + Math.cos(z * 0.21) * 2) * Math.cos(z * 0.27)).lerp(dk, smooth(-20, -90, y));
+    cols.push(c.r, c.g, c.b);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); g.computeVertexNormals();
+  scene.add(new THREE.Mesh(g, addCaustics(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }), 0.6)));
+
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new V3(), pos = new V3();
+
+  // batu
+  const rg = new THREE.IcosahedronGeometry(1, 1), rp = rg.attributes.position;
+  for (let i = 0; i < rp.count; i++) {
+    const x = rp.getX(i), y = rp.getY(i), z = rp.getZ(i);
+    const k = 1 + Math.sin(x * 12.9 + y * 78.2 + z * 37.7) * 0.18; rp.setXYZ(i, x * k, y * k, z * k);
+  }
+  rg.computeVertexNormals();
+  const ROCKS = 260, rocks = new THREE.InstancedMesh(rg, addCaustics(new THREE.MeshStandardMaterial({ roughness: .95, flatShading: true }), 0.35), ROCKS);
+  const rockSpots = [];
+  for (let i = 0; i < ROCKS; i++) {
+    const x = rand(-WORLD, WORLD), z = rand(-WORLD, WORLD), sc = Math.random() < .12 ? rand(10, 22) : rand(1.2, 7);
+    if (floorH(x, z) > -30) rockSpots.push([x, z, sc]);
+    pos.set(x, floorH(x, z) + sc * 0.15, z); q.setFromEuler(e.set(rand(0, 3), rand(0, 6), rand(0, 3))); s.set(sc * rand(.8, 1.4), sc * rand(.5, 1), sc * rand(.8, 1.4));
+    rocks.setMatrixAt(i, m.compose(pos, q, s)); rocks.setColorAt(i, new THREE.Color().setHSL(rand(.07, .14), rand(.05, .2), rand(.25, .45)));
+  }
+  scene.add(rocks);
+
+  // karang (hanya di perairan dangkal)
+  const PAL = [0xff6f91, 0xff9a3c, 0xc86bfa, 0xffd166, 0x4ecdc4, 0xef476f, 0xff5e3a, 0x9b5de5];
+  const coralMat = addCaustics(new THREE.MeshStandardMaterial({ roughness: .8 }), 0.25);
+  const tubeG = new THREE.CylinderGeometry(.22, .35, 1, 8, 1, false); tubeG.translate(0, .5, 0);
+  const CL = 220, tubes = new THREE.InstancedMesh(tubeG, coralMat, CL * 7), brains = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 14, 10), coralMat, CL * 2),
+    fans = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 18, 0, Math.PI), new THREE.MeshStandardMaterial({ roughness: .8, side: THREE.DoubleSide }), CL * 2);
+  let ti = 0, bi = 0, fi = 0;
+  for (let cl = 0; cl < CL; cl++) {
+    let cx, cz;
+    if (Math.random() < .6) { const r = pick(rockSpots); cx = r[0] + rand(-1, 1) * r[2] * 1.3; cz = r[1] + rand(-1, 1) * r[2] * 1.3; }
+    else { cx = rand(-WORLD, WORLD); cz = rand(-WORLD, WORLD); }
+    if (floorH(cx, cz) < -25) continue;
+    const col = new THREE.Color(pick(PAL));
+    for (let k = 0; k < 7; k++) {
+      const x = cx + rand(-2, 2), z = cz + rand(-2, 2);
+      pos.set(x, floorH(x, z) - .1, z); q.setFromEuler(e.set(rand(-.4, .4), 0, rand(-.4, .4))); s.set(rand(.7, 1.4), rand(.8, 4), rand(.7, 1.4));
+      tubes.setMatrixAt(ti, m.compose(pos, q, s)); tubes.setColorAt(ti++, col.clone().offsetHSL(rand(-.03, .03), 0, rand(-.1, .1)));
+    }
+    for (let k = 0; k < 2; k++) {
+      const x = cx + rand(-3, 3), z = cz + rand(-3, 3), r = rand(.6, 1.8);
+      pos.set(x, floorH(x, z), z); q.identity(); s.set(r, r * .6, r);
+      brains.setMatrixAt(bi, m.compose(pos, q, s)); brains.setColorAt(bi++, new THREE.Color(pick(PAL)));
+    }
+    for (let k = 0; k < 2; k++) {
+      const x = cx + rand(-3, 3), z = cz + rand(-3, 3), r = rand(1, 3);
+      pos.set(x, floorH(x, z) - .2, z); q.setFromEuler(e.set(0, rand(0, 6), 0)); s.set(r, r * 1.2, r);
+      fans.setMatrixAt(fi, m.compose(pos, q, s)); fans.setColorAt(fi++, new THREE.Color(Math.random() < .5 ? 0xb5179e : 0xf72585));
+    }
+  }
+  tubes.count = ti; brains.count = bi; fans.count = fi;
+  scene.add(tubes, brains, fans);
+
+  // rumput laut bergoyang
+  const kelpG = new THREE.PlaneGeometry(1, 1, 1, 14); kelpG.translate(0, .5, 0);
+  const kelpMat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
+  kelpMat.onBeforeCompile = sh => {
+    sh.uniforms.uTime = uTime;
+    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      float k = position.y;
+      float ph = instanceMatrix[3].x * .13 + instanceMatrix[3].z * .17;
+      transformed.x *= (1.0 - k * .55);
+      transformed.x += sin(uTime * 1.1 + ph + k * 3.0) * 1.3 * k * k;
+      transformed.z += cos(uTime * .8 + ph + k * 2.2) * .06 * k * k;`);
+  };
+  const KELP = 650, kelp = new THREE.InstancedMesh(kelpG, kelpMat, KELP);
+  let ki = 0;
+  while (ki < KELP) {
+    const cx = rand(-WORLD, WORLD), cz = rand(-WORLD, WORLD), n = Math.floor(rand(6, 16));
+    if (floorH(cx, cz) < -25) continue;
+    for (let k = 0; k < n && ki < KELP; k++) {
+      const x = cx + rand(-6, 6), z = cz + rand(-6, 6);
+      pos.set(x, floorH(x, z) - .3, z); q.setFromEuler(e.set(0, rand(0, 6), 0)); s.set(rand(.8, 1.8), rand(8, 38), 1);
+      kelp.setMatrixAt(ki, m.compose(pos, q, s)); kelp.setColorAt(ki++, new THREE.Color().setHSL(rand(.22, .32), rand(.5, .75), rand(.22, .36)));
+    }
+  }
+  scene.add(kelp);
+
+  // jamur & cacing bercahaya di palung
+  const GLOW = 360, glow = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshBasicMaterial(), GLOW);
+  const GPAL = [0x3dfff0, 0x7a5cff, 0xff4fd8, 0x5cff9d];
+  for (let i = 0; i < GLOW; i++) {
+    const cx = rand(TRENCH_X + 20, WORLD), cz = rand(-WORLD, WORLD), r = rand(.3, 1.4);
+    pos.set(cx, floorH(cx, cz) + r * .3, cz); q.identity(); s.set(r, r * rand(.6, 2.5), r);
+    glow.setMatrixAt(i, m.compose(pos, q, s)); glow.setColorAt(i, new THREE.Color(pick(GPAL)));
+  }
+  scene.add(glow);
+
+  // bintang laut, bulu babi, anemon
+  const star = new THREE.Shape();
+  for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, r = i % 2 ? .2 : .5; star[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r); }
+  const starG = new THREE.ExtrudeGeometry(star, { depth: .07, bevelEnabled: false }); starG.rotateX(-Math.PI / 2);
+  const urchinG = new THREE.IcosahedronGeometry(1, 1), up = urchinG.attributes.position;
+  for (let i = 0; i < up.count; i++) {
+    const x = up.getX(i), y = up.getY(i), z = up.getZ(i), k = Math.sin(x * 41.3 + y * 17.1 + z * 29.7) > 0 ? 1.9 : .75; up.setXYZ(i, x * k, y * k, z * k);
+  }
+  urchinG.computeVertexNormals();
+  const tent = [];
+  for (let i = 0; i < 11; i++) {
+    const c = new THREE.ConeGeometry(.07, 1, 4); c.translate(0, .5, 0);
+    const a = i / 11 * Math.PI * 2, tilt = i === 10 ? 0 : .45;
+    c.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(Math.sin(a) * tilt, 0, -Math.cos(a) * tilt)));
+    c.translate(Math.cos(a) * .15, .25, Math.sin(a) * .15); tent.push(c);
+  }
+  const baseC = new THREE.CylinderGeometry(.22, .28, .3, 8); baseC.translate(0, .15, 0); tent.push(baseC);
+  const anemG = mergeGeos(tent);
+  const anemMat = new THREE.MeshStandardMaterial({ roughness: .6 });
+  anemMat.onBeforeCompile = sh => {
+    sh.uniforms.uTime = uTime;
+    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      float k = max(position.y - .3, 0.0); float ph = instanceMatrix[3].x * .7 + instanceMatrix[3].z * .3;
+      transformed.x += sin(uTime * 1.6 + ph + position.z * 3.0) * .22 * k * k;
+      transformed.z += cos(uTime * 1.3 + ph + position.x * 3.0) * .22 * k * k;`);
+  };
+  const critterMat = addCaustics(new THREE.MeshStandardMaterial({ roughness: .7 }), 0.3);
+  const STARS = 900, URCH = 500, ANEM = 420;
+  const stars = new THREE.InstancedMesh(starG, critterMat, STARS), urch = new THREE.InstancedMesh(urchinG, new THREE.MeshStandardMaterial({ roughness: .5, flatShading: true }), URCH),
+    anem = new THREE.InstancedMesh(anemG, anemMat, ANEM);
+  const SPAL = [0xff7b29, 0xe63946, 0xb5179e, 0xffb703, 0x7b2cbf, 0xff5d8f];
+  for (let i = 0; i < STARS; i++) {
+    const x = rand(-WORLD, WORLD), z = rand(-WORLD, WORLD), r = rand(.15, .45);
+    pos.set(x, floorH(x, z) + .02, z); q.setFromEuler(e.set(0, rand(0, 6), 0)); s.set(r, r, r);
+    stars.setMatrixAt(i, m.compose(pos, q, s)); stars.setColorAt(i, new THREE.Color(pick(SPAL)));
+  }
+  for (let i = 0; i < URCH; i++) {
+    const rs = pick(rockSpots), x = rs[0] + rand(-1, 1) * rs[2] * 1.6, z = rs[1] + rand(-1, 1) * rs[2] * 1.6, r = rand(.08, .22);
+    pos.set(x, floorH(x, z) + r * .5, z); q.setFromEuler(e.set(rand(0, 3), rand(0, 3), 0)); s.set(r, r, r);
+    urch.setMatrixAt(i, m.compose(pos, q, s)); urch.setColorAt(i, new THREE.Color(pick([0x2b1240, 0x14101e, 0x5a1a3a])));
+  }
+  for (let i = 0; i < ANEM; i++) {
+    const rs = pick(rockSpots), x = rs[0] + rand(-1, 1) * rs[2] * 1.5, z = rs[1] + rand(-1, 1) * rs[2] * 1.5, r = rand(.4, 1.3);
+    pos.set(x, floorH(x, z) - .05, z); q.setFromEuler(e.set(0, rand(0, 6), 0)); s.set(r, r * rand(.8, 1.4), r);
+    anem.setMatrixAt(i, m.compose(pos, q, s)); anem.setColorAt(i, new THREE.Color(pick([0xff6fae, 0x7dff9a, 0xff9f43, 0xb388ff, 0x4ee6ff])));
+  }
+  scene.add(stars, urch, anem);
+
+  // permukaan air
+  const surf = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: .75, side: THREE.DoubleSide }));
+  surf.rotation.x = -Math.PI / 2; surf.position.y = TOP; scene.add(surf);
+
+  // sinar matahari
+  const gc = document.createElement('canvas'); gc.width = 4; gc.height = 128;
+  const gx = gc.getContext('2d'), grd = gx.createLinearGradient(0, 0, 0, 128);
+  grd.addColorStop(0, '#fff'); grd.addColorStop(1, '#000'); gx.fillStyle = grd; gx.fillRect(0, 0, 4, 128);
+  const rayMat = new THREE.MeshBasicMaterial({ color: 0xcff4ff, alphaMap: new THREE.CanvasTexture(gc), transparent: true, opacity: .035,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const rayG = new THREE.CylinderGeometry(14, 3, 1, 14, 1, true); rayG.translate(0, -.5, 0);
+  for (let i = 0; i < 60; i++) {
+    const r = new THREE.Mesh(rayG, rayMat), h = rand(80, TOP);
+    r.position.set(rand(-WORLD, TRENCH_X - 40), TOP, rand(-WORLD, WORLD)); r.scale.set(rand(.4, 1.2), h, rand(.4, 1.2)); r.rotation.z = .18; r.rotation.y = rand(0, 6);
+    scene.add(r);
+  }
+}
+
+// salju laut
+const MOTES = 700, motePos = new Float32Array(MOTES * 3);
+const moteGeo = new THREE.BufferGeometry(); moteGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
+const moteMat = new THREE.PointsMaterial({ color: 0xd8f4ff, size: .08, map: dotTex, transparent: true, opacity: .55, depthWrite: false });
+const motes = new THREE.Points(moteGeo, moteMat); motes.frustumCulled = false; scene.add(motes);
+let motesInit = false;
+
+// partikel darah / gelembung
+const PMAX = 1600, pPos = new Float32Array(PMAX * 3), pCol = new Float32Array(PMAX * 3), pBase = new Float32Array(PMAX * 3),
+  pVel = new Float32Array(PMAX * 3), pLife = new Float32Array(PMAX), pRise = new Float32Array(PMAX);
+for (let i = 0; i < PMAX; i++) pPos[i * 3 + 1] = -1e5;
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3)); pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
+const pMat = new THREE.PointsMaterial({ size: .15, map: dotTex, vertexColors: true, transparent: true, depthWrite: false });
+const parts = new THREE.Points(pGeo, pMat); parts.frustumCulled = false; scene.add(parts);
+let pIdx = 0; const tc = new THREE.Color();
+function emit(p, n, color, spread, speed, rise = 0, life = 1) {
+  tc.set(color);
+  for (let i = 0; i < n; i++) {
+    const k = pIdx; pIdx = (pIdx + 1) % PMAX;
+    pPos[k * 3] = p.x + rand(-spread, spread); pPos[k * 3 + 1] = p.y + rand(-spread, spread); pPos[k * 3 + 2] = p.z + rand(-spread, spread);
+    pVel[k * 3] = rand(-1, 1) * speed; pVel[k * 3 + 1] = rand(-1, 1) * speed; pVel[k * 3 + 2] = rand(-1, 1) * speed;
+    pBase[k * 3] = tc.r; pBase[k * 3 + 1] = tc.g; pBase[k * 3 + 2] = tc.b; pLife[k] = life * rand(.6, 1.2); pRise[k] = rise;
+  }
+}
+function updateParts(dt) {
+  const fc = scene.fog.color;
+  for (let k = 0; k < PMAX; k++) {
+    if (pLife[k] <= 0) continue;
+    pLife[k] -= dt;
+    const d = Math.exp(-dt * 2);
+    pVel[k * 3] *= d; pVel[k * 3 + 1] = pVel[k * 3 + 1] * d + pRise[k] * dt; pVel[k * 3 + 2] *= d;
+    pPos[k * 3] += pVel[k * 3] * dt; pPos[k * 3 + 1] += pVel[k * 3 + 1] * dt; pPos[k * 3 + 2] += pVel[k * 3 + 2] * dt;
+    const f = clamp(pLife[k] / .5, 0, 1);
+    pCol[k * 3] = pBase[k * 3] * f + fc.r * (1 - f); pCol[k * 3 + 1] = pBase[k * 3 + 1] * f + fc.g * (1 - f); pCol[k * 3 + 2] = pBase[k * 3 + 2] * f + fc.b * (1 - f);
+    if (pLife[k] <= 0) pPos[k * 3 + 1] = -1e5;
+  }
+  pGeo.attributes.position.needsUpdate = true; pGeo.attributes.color.needsUpdate = true;
+}
+
+// ---------- Model ikan ----------
+function shapeGeo(pts, sc) {
+  const s = new THREE.Shape(); s.moveTo(pts[0][0] * sc, pts[0][1] * sc);
+  for (let i = 1; i < pts.length; i++) s.lineTo(pts[i][0] * sc, pts[i][1] * sc);
+  const g = new THREE.ShapeGeometry(s); g.rotateY(Math.PI / 2); return g; // sumbu x shape -> ke belakang (-z)
+}
+const TAILS = {
+  fork: [[0, .03], [.3, .26], [.2, 0], [.3, -.26], [0, -.03]],
+  fan: [[0, .04], [.22, .24], [.3, .12], [.27, 0], [.3, -.12], [.22, -.24], [0, -.04]],
+  crescent: [[0, .03], [.14, .1], [.3, .36], [.18, .06], [.16, 0], [.18, -.06], [.3, -.36], [.14, -.1], [0, -.03]],
+  shark: [[0, .04], [.12, .12], [.32, .38], [.2, .08], [.18, 0], [.22, -.2], [.1, -.06], [0, -.03]],
+  fluke: [[0, .04], [.12, .2], [.26, .34], [.2, .08], [.22, 0], [.2, -.08], [.26, -.34], [.12, -.2], [0, -.04]],
+};
+const DORSALS = {
+  long: d => [[-.22, 0], [-.12, d], [.12, d * .7], [.24, 0]],
+  tri: d => [[-.12, 0], [.04, d * .8], [.12, d], [.1, 0]],
+  shark: d => [[-.1, 0], [.06, d * .85], [.12, d], [.12, 0]],
+  orca: d => [[-.08, 0], [-.02, d * .7], [.02, d], [.08, 0]],
+};
+const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .3 });
+const eyeBlack = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: .1, metalness: .4 });
+const eyeGlow = new THREE.MeshBasicMaterial({ color: 0xff3df0, fog: false });
+const lureMat = new THREE.MeshBasicMaterial({ color: 0xd8ff8a, fog: false });
+const stalkMat = new THREE.MeshStandardMaterial({ color: 0x3a2a33 });
+const swordMat = new THREE.MeshStandardMaterial({ color: 0x1d3550, roughness: .5 });
+const lureSpriteMat = new THREE.SpriteMaterial({ map: dotTex, color: 0xb8ff6a, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true });
+const eyeSpriteMat = new THREE.SpriteMaterial({ map: dotTex, color: 0xff3df0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true });
+const eyeGeo = new THREE.SphereGeometry(1, 12, 10);
+const stalkGeo = new THREE.CylinderGeometry(.008, .012, .32, 5); stalkGeo.translate(0, .16, 0);
+const swordGeo = new THREE.ConeGeometry(.035, .45, 8); swordGeo.rotateX(Math.PI / 2); swordGeo.translate(0, 0, .68);
+
+function template(spec) {
+  if (spec._t) return spec._t;
+  const g = new THREE.SphereGeometry(.5, 26, 18), p = g.attributes.position, cols = [], c = new THREE.Color();
+  const top = new THREE.Color(spec.color), bel = new THREE.Color(spec.belly), white = new THREE.Color(0xffffff), dark = new THREE.Color(0x111111);
+  const stripeCol = spec.stripeCol != null ? new THREE.Color(spec.stripeCol) : null;
+  const sp = spec.spots != null ? new THREE.Color(spec.spots) : null, taper = spec.taper ?? 1.1, shark = spec.dType === 'shark' || spec.dType === 'orca';
+  for (let i = 0; i < p.count; i++) {
+    let x = p.getX(i), y = p.getY(i); const z = p.getZ(i), ny = y / .5;
+    let tf = z < 0 ? 1 + z * taper : spec.blunt ? 1 : 1 - Math.max(0, z - .25) * .5;
+    if (shark && !spec.blunt && z > .3) tf *= 1 - (z - .3) * 1.2;
+    x *= spec.w * tf; y *= spec.h * tf; if (y < 0) y *= .9;
+    p.setXYZ(i, x, y, z);
+    c.copy(bel).lerp(top, smooth(-.35, .25, ny));
+    if (spec.stripes) for (const s of spec.stripes) {
+      const d = Math.abs(z - s);
+      if (stripeCol) { if (d < .035 && ny > -.1) c.lerp(stripeCol, .85); }
+      else if (d < .045) c.copy(white); else if (d < .065) c.copy(dark);
+    }
+    if (sp && Math.sin(x * 91 + z * 53) * Math.sin(y * 77 - z * 41) > .5 && ny > -.2) c.lerp(sp, .8);
+    if (spec.patch) {
+      if (z > .12 && z < .3 && ny > .05 && ny < .5) c.copy(bel);
+      if (z < -.05 && z > -.25 && ny > .55) c.lerp(new THREE.Color(0x9aa0a8), .6);
+    }
+    cols.push(c.r, c.g, c.b);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); g.computeVertexNormals();
+  let tail;
+  if (spec.tail === 'fluke') { tail = shapeGeo(TAILS.fluke, (.5 + spec.h) * 1.1); tail.rotateZ(Math.PI / 2); }
+  else tail = shapeGeo(TAILS[spec.tail], (.5 + spec.h) * .9 * (spec.tailS || 1));
+  const pectSc = (.6 + spec.h) * (shark ? 1.7 : 1);
+  spec._t = {
+    body: g, tail,
+    dorsal: shapeGeo(DORSALS[spec.dType](spec.dorsal), 1),
+    pect: shapeGeo([[0, .02], [.16, .04], [.2, -.02], [.05, -.04]], pectSc),
+    bodyMat: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .45, metalness: .12 }),
+    finMat: new THREE.MeshStandardMaterial({ color: spec.fin, side: THREE.DoubleSide, roughness: .6 }),
+  };
+  return spec._t;
+}
+
+function makeFishMesh(spec) {
+  const T = template(spec), root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  body.add(new THREE.Mesh(T.body, T.bodyMat));
+  const tail = new THREE.Group(); tail.position.set(0, 0, -.46); tail.add(new THREE.Mesh(T.tail, T.finMat)); body.add(tail);
+  const d = new THREE.Mesh(T.dorsal, T.finMat); d.position.set(0, spec.h * .42, .04); body.add(d);
+  const pl = new THREE.Mesh(T.pect, T.finMat), pr = new THREE.Mesh(T.pect, T.finMat);
+  pl.position.set(spec.w * .36, -spec.h * .18, .16); pr.position.set(-spec.w * .36, -spec.h * .18, .16);
+  body.add(pl, pr);
+  const shark = spec.dType === 'shark' || spec.dType === 'orca';
+  for (const sx of [1, -1]) {
+    const ex = sx * spec.w * .36;
+    if (!shark && !spec.glowEyes) { const w = new THREE.Mesh(eyeGeo, eyeWhite); w.scale.setScalar(spec.eye); w.position.set(ex, spec.h * .1, .3); body.add(w); }
+    const b = new THREE.Mesh(eyeGeo, spec.glowEyes ? eyeGlow : eyeBlack); b.scale.setScalar(spec.eye * (shark ? .8 : .62));
+    b.position.set(ex + sx * spec.eye * (shark ? .2 : .5), spec.h * .1, .3 + spec.eye * .25); body.add(b);
+    if (spec.glowEyes) { const g = new THREE.Sprite(eyeSpriteMat); g.scale.setScalar(spec.eye * 6); g.position.copy(b.position); body.add(g); }
+  }
+  if (spec.lure) {
+    const st = new THREE.Mesh(stalkGeo, stalkMat); st.position.set(0, spec.h * .4, .28); st.rotation.x = .7; body.add(st);
+    const bulb = new THREE.Mesh(eyeGeo, lureMat); bulb.scale.setScalar(.035); bulb.position.set(0, spec.h * .4 + .25, .5); body.add(bulb);
+    const g = new THREE.Sprite(lureSpriteMat); g.scale.setScalar(.45); g.position.copy(bulb.position); body.add(g);
+  }
+  if (spec.sword) body.add(new THREE.Mesh(swordGeo, swordMat));
+  return { root, body, tail, pl, pr };
+}
+
+// ---------- Ikan ----------
+const _f = new V3(), _t = new V3(), _d = new V3(), _m = new V3();
+class Fish {
+  constructor(spec, size, pos) {
+    this.spec = spec; this.pos = pos.clone(); this.vel = new V3();
+    this.yaw = Math.random() * Math.PI * 2; this.pitch = 0; this.roll = 0; this.t = Math.random() * 10;
+    this.m = makeFishMesh(spec); scene.add(this.m.root); this.setSize(size);
+    this.maxHp = 1; this.hp = 1;
+    this.aggro = !!spec.carn && Math.random() < .7; this.provoked = 0;
+    this.biteCd = rand(0, 1); this.huntCd = rand(1, 4); this.retarget = 0; this.target = pos.clone();
+    this.leader = null; this.prey = null; this.threat = null;
+    this.offset = new V3(rand(-1, 1), rand(-.4, .4), rand(-1, 1)); this.mul = .4;
+    this.hit = 0; this.gone = false; this.dead = false;
+  }
+  setSize(s) { this.size = s; this.m.root.scale.setScalar(s); }
+  fwd(o) { return o.set(Math.sin(this.yaw) * Math.cos(this.pitch), -Math.sin(this.pitch), Math.cos(this.yaw) * Math.cos(this.pitch)); }
+  animate(dt, aimYaw, aimPitch) {
+    const sp = this.vel.length();
+    if (aimYaw !== undefined) {
+      this.yaw += angDiff(this.yaw, aimYaw) * (1 - Math.exp(-dt * 8));
+      this.pitch = lerp(this.pitch, aimPitch, 1 - Math.exp(-dt * 8));
+    } else if (sp > .02) {
+      const ty = Math.atan2(this.vel.x, this.vel.z), tp = -Math.asin(clamp(this.vel.y / sp, -1, 1)) * .85;
+      this.yaw += angDiff(this.yaw, ty) * (1 - Math.exp(-dt * 6));
+      this.pitch = lerp(this.pitch, tp, 1 - Math.exp(-dt * 5));
+    }
+    this.t += dt * (4 + sp / this.size * 2.2);
+    const wag = Math.sin(this.t) * .42, fl = this.spec.tail === 'fluke';
+    if (fl) { this.m.tail.rotation.x = wag * .8; this.m.body.rotation.x = -wag * .05; }
+    else { this.m.tail.rotation.y = wag; this.m.body.rotation.y = -wag * .12; }
+    const flap = Math.sin(this.t * .5) * .25;
+    this.m.pl.rotation.set(0, -.6, -.5 + flap); this.m.pr.rotation.set(0, .6, .5 - flap);
+    this.hit = Math.max(0, this.hit - dt * 4);
+    this.m.root.scale.setScalar(this.size * (1 + this.hit * .18));
+    this.m.root.position.copy(this.pos);
+    this.m.root.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+  }
+  dispose() { this.dead = this.gone = true; scene.remove(this.m.root); }
+}
+
+// ---------- Audio ----------
+let actx = null, muted = false, master = null;
+function initAudio() {
+  if (actx) return;
+  try {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    master = actx.createGain(); master.gain.value = .6; master.connect(actx.destination);
+    const len = actx.sampleRate * 4, buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+    let last = 0; for (let i = 0; i < len; i++) { last = (last + .02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
+    const src = actx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 380;
+    const g = actx.createGain(); g.gain.value = .35; src.connect(f).connect(g).connect(master); src.start();
+  } catch { actx = null; }
+}
+function tone(f1, f2, dur, type = 'sine', vol = .15, delay = 0) {
+  if (!actx || muted) return;
+  const t = actx.currentTime + delay, o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  o.connect(g).connect(master); o.start(t); o.stop(t + dur + .02);
+}
+function noise(dur, freq, vol) {
+  if (!actx || muted) return;
+  const len = Math.floor(actx.sampleRate * dur), b = actx.createBuffer(1, len, actx.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2;
+  const s = actx.createBufferSource(); s.buffer = b; const f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq;
+  const g = actx.createGain(); g.gain.value = vol; s.connect(f).connect(g).connect(master); s.start();
+}
+const sfx = {
+  snap: () => { noise(.06, 3000, .25); tone(220, 90, .08, 'square', .05); },
+  hit: () => { noise(.12, 1400, .5); tone(160, 50, .14, 'square', .1); },
+  eat: () => { noise(.08, 2000, .3); tone(420, 900, .12, 'sine', .14); },
+  hurt: () => { noise(.25, 700, .6); tone(110, 35, .35, 'sawtooth', .16); },
+  crack: () => { noise(.1, 4000, .35); tone(900, 500, .06, 'triangle', .06); },
+  evolve: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, f * 1.01, .25, 'triangle', .14, i * .1)),
+  boss: () => { tone(70, 40, 1.4, 'sawtooth', .2); tone(105, 52, 1.4, 'sawtooth', .12, .1); },
+};
+
+// ---------- State game ----------
+// state: menu | egg | play | evolve | pause | dead
+let state = 'menu', fishes = [], corpses = [], score = 0, eaten = 0, shake = 0, lastHurt = 0, targetFish = null, targetT = 0;
+let camYaw = 0, camPitch = -.1, best = 0, starter = 'koki', hatchProg = 0, eggWob = 0, boss = null, bossTimer = 25, bossWarned = false;
+try { best = +localStorage.getItem('ikanBest') || 0; } catch {}
+const START = new V3(0, floorH(0, 0) + .25, 0);
+const player = new Fish(SPECIES.koki, .5, START);
+Object.assign(player, { stage: 0, growth: 0, stamina: 1, hp: 100, alive: false, biteCd: 0, boostT: 0, readyToasted: false });
+player.m.root.visible = false;
+const egg = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 16), new THREE.MeshStandardMaterial({ color: 0xfff1d6, roughness: .35, transparent: true, opacity: .55, emissive: 0x332211 }));
+egg.scale.set(.2, .26, .2); egg.visible = false; scene.add(egg);
+const MAX_FISH = IS_TOUCH ? 58 : 88;
+const playerSize = () => TIER_BASE[player.stage] * (1 + .6 * player.growth);
+const inTrench = p => p.x > 200;
+
+function setPlayerSpec(spec) {
+  scene.remove(player.m.root); player.spec = spec; player.m = makeFishMesh(spec); scene.add(player.m.root);
+  player.setSize(playerSize());
+}
+
+function pickSpawn(deep) {
+  const ps = player.size, r = Math.random();
+  const f = r < .58 ? rand(.15, .8) : r < .86 ? rand(.8, 1.5) : rand(1.5, 3.5);
+  const s = ps * f, list = deep && Math.random() < .7 ? DEEP_LIST : SHALLOW_LIST;
+  const cands = list.filter(sp => s >= sp.base * .7 && s <= sp.base * 1.7);
+  let spec = cands.length ? pick(cands) : null;
+  if (!spec) { let bd = 1e9; for (const sp of list) { const d = Math.abs(Math.log(s / sp.base)); if (d < bd) { bd = d; spec = sp; } } }
+  return [spec, clamp(s, spec.base * .75, spec.base * 1.65)];
+}
+function spawnGroup(minD, maxD) {
+  const a = Math.random() * Math.PI * 2, d = rand(minD, maxD);
+  const x = clamp(player.pos.x + Math.cos(a) * d, -WORLD + 10, WORLD - 10), z = clamp(player.pos.z + Math.sin(a) * d, -WORLD + 10, WORLD - 10);
+  const fh = floorH(x, z), y0 = clamp(player.pos.y + rand(-25, 25), fh + 2, TOP - 4);
+  const [spec, size] = pickSpawn(fh < -60 && y0 < -15);
+  if (size > player.size * 1.1 && d < 40 + player.size * 4) return;
+  const y = clamp(y0, fh + size + 1, TOP - size - 2);
+  const n = spec.school ? Math.floor(rand(4, 9)) : 1;
+  let leader = null;
+  for (let i = 0; i < n; i++) {
+    const p = new V3(x + rand(-1, 1) * size * 3, y + rand(-1, 1) * size, z + rand(-1, 1) * size * 3);
+    p.y = Math.max(p.y, floorH(p.x, p.z) + size);
+    const fsh = new Fish(spec, size * rand(.9, 1.1), p);
+    if (leader) { fsh.leader = leader; fsh.yaw = leader.yaw; } else leader = fsh;
+    fishes.push(fsh);
+  }
+}
+function spawnBoss() {
+  let x, z, tries = 0;
+  do { x = rand(320, WORLD - 30); z = clamp(player.pos.z + rand(-200, 200), -WORLD + 40, WORLD - 40); }
+  while (Math.hypot(x - player.pos.x, z - player.pos.z) < 150 && tries++ < 20);
+  const fh = floorH(x, z);
+  boss = new Fish(SPECIES.leviathan, 40 * rand(.95, 1.1), new V3(x, rand(fh + 30, -50), z));
+  boss.isBoss = true; boss.maxHp = boss.hp = 5; boss.aggro = true; bossWarned = false;
+  fishes.push(boss);
+}
+const spawnNear = () => 32 + player.size * 6, spawnFar = () => 90 + player.size * 9, despawnD = () => 150 + player.size * 12;
+
+function resetWorld() {
+  for (const f of fishes) f.dispose(); fishes = [];
+  for (const c of corpses) c.dispose(); corpses = [];
+  boss = null; bossTimer = 25; lifeReset = true;
+  player.growth = 0; player.stage = 0; player.hp = 100; player.stamina = 1; player.readyToasted = false;
+  player.pos.copy(START); player.vel.set(0, 0, 0);
+  setPlayerSpec(SPECIES[starter]);
+  score = 0; eaten = 0; targetFish = null;
+  let tries = 0; while (fishes.length < MAX_FISH && tries++ < 400) spawnGroup(12, spawnFar());
+  player.m.root.visible = false;
+}
+
+// ---------- AI ----------
+function pickWander(n) {
+  const R = 30 + n.size * 12;
+  let tx = clamp(n.pos.x + rand(-R, R), -WORLD + 20, WORLD - 20);
+  const tz = clamp(n.pos.z + rand(-R, R), -WORLD + 20, WORLD - 20);
+  if (n.spec.deep) tx = Math.max(tx, TRENCH_X + 20);
+  const fh = floorH(tx, tz);
+  let ty = clamp(n.pos.y + rand(-R, R) * .3, fh + n.size + 1.5, TOP - n.size - 3);
+  if (n.spec.deep) ty = clamp(ty, fh + n.size + 1.5, Math.max(fh + n.size + 2, -30));
+  n.target.set(tx, ty, tz);
+  n.retarget = rand(5, 12);
+}
+function findPrey(n) {
+  const r = 8 + n.size * 3, r2 = r * r;
+  for (const o of fishes) {
+    if (o === n || o.gone || o.isBoss || o.size > n.size * .45) continue;
+    if (o.pos.distanceToSquared(n.pos) < r2) return o;
+  }
+  return null;
+}
+function updateNPC(n, dt) {
+  const ps = player.size, alive = player.alive && state === 'play';
+  _t.subVectors(player.pos, n.pos); const dist = _t.length() || .001;
+  let mul = .4; _d.set(0, 0, 0);
+  n.biteCd -= dt; n.provoked = Math.max(0, n.provoked - dt);
+  if (n.threat && (n.threat.gone || n.threat.pos.distanceTo(n.pos) > 14 + n.threat.size * 3)) n.threat = null;
+  if (n.prey && (n.prey.gone || (n.preyT -= dt) <= 0)) { if (!n.prey.gone && n.prey.threat === n) n.prey.threat = null; n.prey = null; }
+  if (n.leader && n.leader.gone) n.leader = null;
+  const attack = () => {
+    _d.copy(_t).multiplyScalar(1 / dist);
+    const reach = n.size * .55 + ps * .45 + .25;
+    if (dist < reach && n.biteCd <= 0 && n.fwd(_f).dot(_d) > .3) { biteplayer(n); n.biteCd = rand(1.1, 1.7); }
+  };
+  const chaseRange = n.isBoss ? (inTrench(player.pos) ? 110 : 0) : 18 + n.size * 4;
+  if (alive && n.provoked > 0 && n.size > ps * .75) { attack(); mul = 1; }
+  else if (alive && ps > n.size * 1.15 && dist < 5 + ps * 4 + n.size * 2) { _d.copy(_t).multiplyScalar(-1 / dist); mul = 1; }
+  else if (n.threat) { _d.subVectors(n.pos, n.threat.pos).normalize(); mul = 1; }
+  else if (alive && n.aggro && n.size > ps * 1.1 && dist < chaseRange) { attack(); mul = .85; }
+  else if (n.prey) {
+    _d.subVectors(n.prey.pos, n.pos); const l = _d.length() || 1; _d.multiplyScalar(1 / l); mul = .95;
+    if (l < n.size * .5 + n.prey.size * .5) {
+      emit(n.prey.pos, 10, BLOOD, n.prey.size * .4, n.prey.size, 0, 1); n.prey.dispose(); n.prey = null; n.hit = .5; n.huntCd = rand(4, 9);
+    }
+  } else {
+    if (n.leader) { n.target.copy(n.leader.pos).addScaledVector(n.offset, n.leader.size * 4); mul = Math.max(.4, n.leader.mul); }
+    else { n.retarget -= dt; if (n.retarget <= 0 || n.pos.distanceToSquared(n.target) < n.size * n.size * 16) pickWander(n); }
+    _d.subVectors(n.target, n.pos); const l = _d.length();
+    if (l > .001) _d.multiplyScalar(1 / l);
+    if (n.leader && l < n.size * 2) mul *= .5;
+    if (n.aggro && !n.isBoss) { n.huntCd -= dt; if (n.huntCd <= 0) { n.huntCd = rand(2, 4); n.prey = findPrey(n); n.preyT = 6; if (n.prey) n.prey.threat = n; } }
+  }
+  n.mul = mul;
+  const fh = floorH(n.pos.x, n.pos.z);
+  if (n.pos.y < fh + n.size * 1.2 + 1) _d.y += 1;
+  if (n.pos.y > TOP - n.size - 3) _d.y -= 1;
+  if (Math.abs(n.pos.x) > WORLD - 10) _d.x -= Math.sign(n.pos.x);
+  if (Math.abs(n.pos.z) > WORLD - 10) _d.z -= Math.sign(n.pos.z);
+  if (n.isBoss && n.pos.x < TRENCH_X && n.provoked <= 0) _d.x += 1;
+  if (_d.lengthSq() > 1e-6) _d.normalize();
+  const maxS = n.spec.speed * (1.6 + Math.min(n.size, 25)) * mul;
+  n.vel.lerp(_d.multiplyScalar(maxS), 1 - Math.exp(-dt * (mul > .8 ? 3 : 1.5)));
+  n.pos.addScaledVector(n.vel, dt);
+  n.pos.y = clamp(n.pos.y, fh + n.size * .3, TOP - n.size * .3);
+  n.animate(dt);
+}
+function updateCorpses(dt) {
+  for (const c of corpses) {
+    c.life -= dt;
+    const fh = floorH(c.pos.x, c.pos.z);
+    if (c.pos.y > fh + c.size * .2) c.pos.y = Math.max(fh + c.size * .2, c.pos.y - dt * (.4 + c.size * .12));
+    c.roll = lerp(c.roll, Math.PI, 1 - Math.exp(-dt * 2)); c.pitch = lerp(c.pitch, 0, 1 - Math.exp(-dt * 2));
+    c.hit = Math.max(0, c.hit - dt * 4);
+    c.m.root.position.copy(c.pos);
+    c.m.root.rotation.set(c.pitch, c.yaw, c.roll, 'YXZ');
+    c.m.root.scale.setScalar(c.size * (.55 + .45 * c.chunks / c.chunks0) * (1 + c.hit * .15));
+    if (Math.random() < dt * 1.5) emit(c.pos, 1, 0x7a0012, c.size * .2, c.size * .2, c.size * .1, 2);
+    if (c.life <= 0 || c.pos.distanceTo(player.pos) > despawnD()) c.dispose();
+  }
+  corpses = corpses.filter(c => !c.dead);
+}
+
+// ---------- Aksi ----------
+function toast(txt, color = '#fff') {
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = txt; el.style.color = color;
+  const feed = $('feed'); feed.appendChild(el); while (feed.children.length > 4) feed.firstChild.remove();
+  setTimeout(() => el.remove(), 1800);
+}
+function gainGrowth(g) {
+  player.growth = Math.min(1, player.growth + g);
+  player.setSize(playerSize());
+  if (player.growth >= 1 && !player.readyToasted) {
+    player.readyToasted = true;
+    if (player.stage < TIERS.length - 1) toast('🧬 Siap berevolusi! Tekan E', '#9dffcf'); else toast('👑 Ukuran maksimum!', '#ffd166');
+  }
+}
+function playerBite() {
+  if (player.biteCd > 0 || !player.alive || state !== 'play') return;
+  player.biteCd = .42;
+  player.fwd(_f); _m.copy(player.pos).addScaledVector(_f, player.size * .45);
+  let bestF = null, bd = 1e9;
+  const reach = player.size * .55 + .35;
+  const consider = n => {
+    const d = _m.distanceTo(n.pos) - n.size * (n.isBoss ? .45 : .35);
+    if (d < reach) { _t.subVectors(n.pos, player.pos).normalize(); if (_t.dot(_f) > .2 && d < bd) { bd = d; bestF = n; } }
+  };
+  for (const n of fishes) if (!n.gone) consider(n);
+  for (const c of critters) if (c.alive) consider(c);
+  for (const c of corpses) consider(c);
+  player.vel.addScaledVector(_f, player.size * 2.5); player.hit = .6;
+  if (!bestF) { sfx.snap(); return; }
+  if (bestF.isCorpse) { biteCorpse(bestF); return; }
+  if (bestF.isCritter) { biteCritter(bestF); return; }
+  const ratio = bestF.size / player.size;
+  if (ratio < .45) { eat(bestF); return; }
+  bestF.hp -= .35 * Math.pow(1 / ratio, bestF.isBoss ? 1 : 2) * player.spec.bite * rand(.85, 1.15);
+  bestF.hit = 1; bestF.provoked = bestF.isBoss ? 30 : 8; targetFish = bestF; targetT = 4;
+  emit(bestF.pos, 14, BLOOD, bestF.size * .3, bestF.size * 1.2, 0, 1.2); sfx.hit();
+  if (bestF.hp <= 0) killToCorpse(bestF, ratio);
+}
+function eat(n) {
+  const ratio = Math.min(2, n.size / player.size);
+  emit(n.pos, 24, BLOOD, n.size * .4, n.size * 1.4, 0, 1.4);
+  emit(n.pos, 8, 0xffffff, n.size * .3, n.size, n.size * 1.5, 1.5);
+  n.dispose();
+  if (targetFish === n) targetFish = null;
+  player.hp = Math.min(100, player.hp + 8 + ratio * 30);
+  const pts = Math.round(n.size * n.size * 60 + 10); score += pts; eaten++;
+  toast(`+${pts}  ${n.spec.name}`, '#7dffb0'); sfx.eat();
+  gainGrowth(.17 * Math.pow(ratio, 1.6));
+}
+function killToCorpse(n, ratio) {
+  n.gone = true; n.isCorpse = true; n.life = 90; n.roll = 0;
+  const r = Math.min(2.5, ratio);
+  n.chunks0 = n.chunks = n.isBoss ? 30 : clamp(Math.round(2 + r * 3), 2, 12);
+  n.per = (n.isBoss ? 3 : .17 * Math.pow(r, 1.6) * 1.3) / n.chunks0;
+  corpses.push(n);
+  if (targetFish === n) targetFish = null;
+  const pts = n.isBoss ? 10000 : Math.round(n.size * n.size * 60 + 10); score += pts; eaten++;
+  emit(n.pos, 40, BLOOD, n.size * .5, n.size * 1.5, 0, 1.8);
+  if (n.isBoss) { boss = null; bossTimer = 180; toast('🏆 LEVIATHAN DIKALAHKAN!', '#ffd166'); toast(`+${pts} • Kamu penguasa lautan!`, '#ffd166'); sfx.evolve(); }
+  else toast(`💀 ${n.spec.name} kalah! Gigit dagingnya`, '#ffd166');
+  sfx.hit();
+}
+function biteCorpse(c) {
+  c.chunks--; c.hit = 1;
+  emit(c.pos, 12, BLOOD, c.size * .3, c.size, 0, 1.2);
+  player.hp = Math.min(100, player.hp + 5 + Math.min(20, c.size / player.size * 8));
+  score += Math.round(c.size * 10 + 2);
+  toast('🍖 Nyam! Daging ' + c.spec.name, '#ffb38a'); sfx.eat();
+  gainGrowth(c.per);
+  if (c.chunks <= 0) { emit(c.pos, 10, 0xffffff, c.size * .3, c.size * .5, c.size, 1.5); c.dispose(); corpses = corpses.filter(x => x !== c); }
+}
+function biteplayer(n) {
+  if (!player.alive) return;
+  let dmg = 14 * Math.pow(n.size / player.size, 1.4) * n.spec.bite / (player.spec.tough || 1);
+  if (n.isBoss && player.stage >= TIERS.length - 2) dmg = Math.min(dmg, 22); // bos bisa dilawan di tahap akhir
+  player.hp -= dmg; lastHurt = 0; shake = Math.min(1, shake + .5 + dmg / 60);
+  $('hurt').style.opacity = Math.min(1, .4 + dmg / 50);
+  emit(player.pos, 18, BLOOD, player.size * .3, player.size * 1.2, 0, 1.2); sfx.hurt();
+  n.hit = .6;
+  if (player.hp <= 0) die(n.spec.name);
+}
+function die(by) {
+  player.alive = false; player.hp = 0; player.m.root.visible = false;
+  emit(player.pos, 60, BLOOD, player.size * .5, player.size * 2, 0, 2);
+  if (score > best) { best = score; try { localStorage.setItem('ikanBest', best); } catch {} }
+  state = 'dead'; if (document.pointerLockElement) document.exitPointerLock();
+  setTimeout(() => {
+    $('deadTitle').textContent = `Kamu dimakan oleh ${by}!`;
+    $('dSpec').textContent = player.spec.name; $('dSize').textContent = player.size.toFixed(2) + ' m';
+    $('dEaten').textContent = eaten; $('dScore').textContent = score; $('dBest').textContent = best;
+    $('dead').classList.remove('hidden'); $('hud').classList.add('hidden'); $('touch').classList.add('hidden');
+  }, 1300);
+}
+
+// ---------- Kartu spesies ----------
+function cardHTML(key, sel) {
+  const s = SPECIES[key], hex = c => '#' + c.toString(16).padStart(6, '0');
+  const bar = (l, v, mx) => `<div class="sb"><span>${l}</span><i><b style="width:${clamp(v / mx, .05, 1) * 100}%"></b></i></div>`;
+  return `<button class="card2${sel ? ' sel' : ''}" data-k="${key}">
+    <div class="sw" style="background:linear-gradient(180deg,${hex(s.color)} 0%,${hex(s.color)} 45%,${hex(s.belly)} 100%)"></div>
+    <div class="cn">${s.name}</div><div class="cd">${s.desc || ''}</div>
+    ${bar('Kecepatan', s.speed, 1.6)}${bar('Gigitan', s.bite, 2)}${bar('Ketahanan', s.tough || 1, 1.75)}</button>`;
+}
+function renderStarters() {
+  const box = $('starterCards'); box.innerHTML = TIERS[0].map(k => cardHTML(k, k === starter)).join('');
+  box.querySelectorAll('.card2').forEach(b => b.addEventListener('click', () => { starter = b.dataset.k; renderStarters(); }));
+}
+function openEvolve() {
+  if (state !== 'play' || !player.alive || player.growth < 1 || player.stage >= TIERS.length - 1) return;
+  state = 'evolve'; if (document.pointerLockElement) document.exitPointerLock();
+  const next = TIERS[player.stage + 1];
+  $('evoSub').textContent = `Tahap ${player.stage + 2} dari ${TIERS.length} • ukuran ±${TIER_BASE[player.stage + 1]} m`;
+  const box = $('evoCards'); box.innerHTML = next.map(k => cardHTML(k, false)).join('');
+  box.querySelectorAll('.card2').forEach(b => b.addEventListener('click', () => evolveTo(b.dataset.k)));
+  $('evo').classList.remove('hidden');
+}
+function closeEvolve() { $('evo').classList.add('hidden'); state = 'play'; }
+function evolveTo(key) {
+  player.stage++; player.growth = 0; player.readyToasted = false;
+  setPlayerSpec(SPECIES[key]); player.hp = 100;
+  closeEvolve();
+  emit(player.pos, 50, 0xffffff, player.size * .6, player.size * 1.5, player.size * 2, 2);
+  toast(`🧬 Kamu sekarang ${player.spec.name}!`, '#9dffcf'); sfx.evolve();
+}
+
+// ---------- Telur ----------
+function hatchTap() {
+  if (state !== 'egg') return;
+  hatchProg += rand(.18, .28); eggWob = 1; sfx.crack();
+  emit(egg.position, 3, 0xffffff, .1, .3, .4, .8);
+  $('hatchFill').style.width = Math.min(100, hatchProg * 100) + '%';
+  if (hatchProg >= 1) {
+    state = 'play'; egg.visible = false; $('hatch').classList.add('hidden');
+    emit(egg.position, 30, 0xfff1d6, .15, .8, .2, 1.2);
+    player.alive = true; player.pos.copy(egg.position).y += .4; player.vel.set(0, 1, 0);
+    $('hud').classList.remove('hidden'); if (IS_TOUCH) $('touch').classList.remove('hidden');
+    toast('🐣 Menetas! Makan ikan kecil (titik hijau di radar)', '#9dffcf'); sfx.evolve();
+  }
+}
+function updateEgg(dt) {
+  eggWob = Math.max(0, eggWob - dt * 3);
+  const w = Math.sin(uTime.value * 30) * eggWob * .35;
+  egg.rotation.set(w, 0, w * .6);
+  player.pos.copy(egg.position);
+  player.m.root.position.copy(egg.position);
+  player.m.root.rotation.set(0, uTime.value * .5, Math.sin(uTime.value * 3) * .2);
+  player.m.root.scale.setScalar(player.size * .55);
+}
+
+// ---------- Input ----------
+const keys = {};
+const joy = { id: null, x: 0, y: 0 };
+const touchBtn = { bite: false, boost: false, up: false, down: false };
+let lookId = null, lookX = 0, lookY = 0, dragging = false, wasLocked = false;
+addEventListener('keydown', e => {
+  if (e.code === 'Space') e.preventDefault();
+  if (state === 'egg' && !e.repeat) hatchTap();
+  keys[e.code] = true;
+  if (state === 'play') {
+    if (e.code === 'KeyF' || e.code === 'KeyJ') playerBite();
+    if (e.code === 'KeyE') openEvolve();
+    if (e.code === 'Escape' || e.code === 'KeyP') pause();
+  } else if (state === 'pause' && (e.code === 'Escape' || e.code === 'KeyP')) resume();
+  else if (state === 'evolve' && e.code === 'Escape') closeEvolve();
+  if (e.code === 'KeyM') { muted = !muted; if (master) master.gain.value = muted ? 0 : .6; }
+});
+addEventListener('keyup', e => keys[e.code] = false);
+function releaseInputs() { for (const k in keys) keys[k] = false; for (const k in touchBtn) touchBtn[k] = false; document.querySelectorAll('.tb.on').forEach(b => b.classList.remove('on')); endJoy(); dragging = false; lookId = null; }
+addEventListener('blur', releaseInputs);
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+const look = (dx, dy, k) => { camYaw -= dx * k; camPitch = clamp(camPitch - dy * k, -1.35, 1.35); };
+canvas.addEventListener('mousedown', e => {
+  if (state === 'egg') { hatchTap(); return; }
+  if (state !== 'play') return;
+  if (!document.pointerLockElement && canvas.requestPointerLock) { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch {} }
+  if (e.button === 0) playerBite();
+  dragging = true;
+});
+addEventListener('mouseup', () => dragging = false);
+addEventListener('mousemove', e => {
+  if (state !== 'play') return;
+  if (document.pointerLockElement === canvas || dragging) look(e.movementX, e.movementY, .0023);
+});
+document.addEventListener('pointerlockchange', () => {
+  const locked = document.pointerLockElement === canvas;
+  if (wasLocked && !locked && state === 'play') pause();
+  wasLocked = locked;
+});
+canvas.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'touch') return;
+  e.preventDefault(); // cegah mousedown tiruan (gigit/menetas ganda)
+  if (state === 'egg') { hatchTap(); return; }
+  if (lookId === null) { lookId = e.pointerId; lookX = e.clientX; lookY = e.clientY; }
+});
+addEventListener('pointermove', e => {
+  if (e.pointerId === lookId && state === 'play') { look(e.clientX - lookX, e.clientY - lookY, .006); lookX = e.clientX; lookY = e.clientY; }
+  if (e.pointerId === joy.id) moveJoy(e);
+});
+addEventListener('pointerup', e => { if (e.pointerId === lookId) lookId = null; if (e.pointerId === joy.id) endJoy(); });
+addEventListener('pointercancel', e => { if (e.pointerId === lookId) lookId = null; if (e.pointerId === joy.id) endJoy(); });
+const joyEl = $('joy'), knob = $('knob');
+function moveJoy(e) {
+  const r = joyEl.getBoundingClientRect(), R = r.width / 2;
+  let dx = (e.clientX - r.left - R) / R, dy = (e.clientY - r.top - R) / R; const l = Math.hypot(dx, dy);
+  if (l > 1) { dx /= l; dy /= l; }
+  joy.x = dx; joy.y = dy; knob.style.transform = `translate(${dx * R * .6}px, ${dy * R * .6}px)`;
+}
+function endJoy() { joy.id = null; joy.x = joy.y = 0; knob.style.transform = ''; }
+joyEl.addEventListener('pointerdown', e => { e.preventDefault(); joy.id = e.pointerId; moveJoy(e); });
+for (const [id, k] of [['btnBite', 'bite'], ['btnBoost', 'boost'], ['btnUp', 'up'], ['btnDown', 'down']]) {
+  const el = $(id);
+  el.addEventListener('pointerdown', e => { e.preventDefault(); touchBtn[k] = true; el.classList.add('on'); if (k === 'bite') playerBite(); });
+  const off = () => { touchBtn[k] = false; el.classList.remove('on'); };
+  el.addEventListener('pointerup', off); el.addEventListener('pointerleave', off); el.addEventListener('pointercancel', off);
+}
+$('evolve').addEventListener('click', openEvolve);
+$('laterBtn').addEventListener('click', closeEvolve);
+$('btnPause').addEventListener('click', () => pause());
+
+// ---------- Layar ----------
+renderStarters();
+if (IS_TOUCH) {
+  $('keysTxt').innerHTML = '<b>Joystick</b> berenang • <b>Geser layar</b> arahkan (geser ke bawah = menukik)<br><b>GIGIT</b> makan • <b>⚡</b> ngebut • <b>▲▼</b> naik / turun';
+  $('hatchHint').textContent = 'Ketuk layar berulang kali';
+  $('hint').classList.add('hidden');
+}
+if (best) $('bestTxt').textContent = 'Rekor: ' + best;
+function begin() {
+  initAudio(); if (actx && actx.state === 'suspended') actx.resume();
+  releaseInputs(); resetWorld();
+  state = 'egg'; hatchProg = 0; $('hatchFill').style.width = '0%'; $('hurt').style.opacity = 0;
+  egg.position.copy(START); egg.visible = true;
+  player.alive = false; player.m.root.visible = true;
+  camYaw = 0; camPitch = .15;
+  $('start').classList.add('hidden'); $('dead').classList.add('hidden'); $('hatch').classList.remove('hidden');
+}
+function pause() { if (state !== 'play') return; state = 'pause'; $('pause').classList.remove('hidden'); if (document.pointerLockElement) document.exitPointerLock(); }
+function resume() { state = 'play'; $('pause').classList.add('hidden'); if (actx && actx.state === 'suspended') actx.resume(); }
+$('playBtn').addEventListener('click', begin);
+$('againBtn').addEventListener('click', () => { $('dead').classList.add('hidden'); $('start').classList.remove('hidden'); renderStarters(); if (best) $('bestTxt').textContent = 'Rekor: ' + best; state = 'menu'; });
+$('resumeBtn').addEventListener('click', resume);
+
+// ---------- Update pemain & kamera ----------
+const camDir = new V3(), focus = new V3(), camGoal = new V3(), up = new V3(0, 1, 0);
+function updatePlayer(dt) {
+  player.biteCd -= dt; lastHurt += dt;
+  let thrust = 0, turn = 0, vert = 0;
+  if (keys.KeyW || keys.ArrowUp) thrust = 1;
+  if (keys.KeyS || keys.ArrowDown) thrust = -1;
+  if (keys.KeyA || keys.ArrowLeft) turn += 1;
+  if (keys.KeyD || keys.ArrowRight) turn -= 1;
+  if (keys.Space || touchBtn.up) vert += 1;
+  if (keys.KeyC || keys.KeyQ || touchBtn.down) vert -= 1;
+  if (joy.id !== null) { const jm = Math.hypot(joy.x, joy.y); thrust = joy.y < .35 ? jm : -1; turn -= joy.x * 1.2; }
+  camYaw += turn * dt * 2.2;
+  camDir.set(Math.sin(camYaw) * Math.cos(camPitch), Math.sin(camPitch), Math.cos(camYaw) * Math.cos(camPitch));
+  const boost = (keys.ShiftLeft || keys.ShiftRight || touchBtn.boost) && player.stamina > .03 && thrust > 0;
+  if (boost) player.stamina -= dt * .3; else player.stamina = Math.min(1, player.stamina + dt * .15);
+  const maxS = player.spec.speed * (2.2 + player.size * 1.3) * (boost ? 1.9 : 1);
+  if (thrust > 0) player.vel.addScaledVector(camDir, thrust * maxS * 3 * dt);
+  if (thrust < 0) player.vel.multiplyScalar(Math.exp(-dt * 3));
+  if (vert) player.vel.addScaledVector(up, vert * maxS * 2 * dt);
+  player.vel.multiplyScalar(Math.exp(-dt * 1.1));
+  const sp = player.vel.length(); if (sp > maxS) player.vel.multiplyScalar(lerp(1, maxS / sp, 1 - Math.exp(-dt * 4)));
+  player.pos.addScaledVector(player.vel, dt);
+  const fh = floorH(player.pos.x, player.pos.z);
+  player.pos.y = clamp(player.pos.y, fh + player.size * .3, TOP - player.size * .3);
+  player.pos.x = clamp(player.pos.x, -WORLD, WORLD); player.pos.z = clamp(player.pos.z, -WORLD, WORLD);
+  if (boost) { player.boostT -= dt; if (player.boostT <= 0) { player.boostT = .07; player.fwd(_f); emit(_m.copy(player.pos).addScaledVector(_f, -player.size * .5), 2, 0xffffff, player.size * .1, player.size * .3, player.size * 1.5, 1.2); } }
+  if (lastHurt > 4) player.hp = Math.min(100, player.hp + dt * 2);
+
+  // makan otomatis ikan kecil & tabrakan
+  player.fwd(_f); _m.copy(player.pos).addScaledVector(_f, player.size * .45);
+  for (const n of fishes) {
+    if (n.gone) continue;
+    if (n.size < player.size * .35 && _m.distanceTo(n.pos) < player.size * .3 + n.size * .5) { eat(n); continue; }
+    _t.subVectors(player.pos, n.pos); const d = _t.length(), minD = (player.size + n.size) * .22;
+    if (d < minD && d > 1e-4 && n.size > player.size * .5) player.pos.addScaledVector(_t, (minD - d) / d * (n.size / (n.size + player.size)));
+  }
+  player.animate(dt, camYaw, -camPitch);
+
+  if (boss && !boss.gone && inTrench(player.pos) && !bossWarned && boss.pos.distanceTo(player.pos) < 160) {
+    bossWarned = true; toast('⚠ Sesuatu yang sangat besar mendekat…', '#e7b8ff'); sfx.boss();
+  }
+}
+function updateCamera(dt) {
+  if (state === 'menu' || state === 'dead') camYaw += dt * .12;
+  camDir.set(Math.sin(camYaw) * Math.cos(camPitch), Math.sin(camPitch), Math.cos(camYaw) * Math.cos(camPitch));
+  const dist = 1.6 + player.size * 3.2;
+  focus.copy(player.pos); focus.y += player.size * .35;
+  camGoal.copy(focus).addScaledVector(camDir, -dist);
+  camGoal.y = clamp(camGoal.y, floorH(camGoal.x, camGoal.z) + .4, TOP - .4);
+  camera.position.lerp(camGoal, 1 - Math.exp(-dt * 10));
+  shake = Math.max(0, shake - dt * 2.5);
+  if (shake > 0) camera.position.add(_t.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(shake * player.size * .15));
+  camera.lookAt(_t.copy(focus).addScaledVector(camDir, player.size));
+}
+const shallow = new THREE.Color(0x2b9cc4), deepCol = new THREE.Color(0x0d4a6e), abyss = new THREE.Color(0x03121e);
+const moteLight = new THREE.Color(0xd8f4ff), moteDeep = new THREE.Color(0x6fffe8);
+function updateEnv(dt) {
+  const cy = camera.position.y, t = Math.pow(clamp(cy / TOP, 0, 1), .8), dark = smooth(-10, -110, cy);
+  scene.fog.color.copy(deepCol).lerp(shallow, .6 + t * .4).lerp(abyss, dark); scene.background.copy(scene.fog.color);
+  scene.fog.density = .0095 / (1 + player.size * .09) * (1 + dark * 1.2);
+  hemi.intensity = 1.4 * (1 - dark * .78); sun.intensity = 1.5 * (1 - dark);
+  plight.position.copy(player.pos); plight.position.y += player.size;
+  plight.distance = 25 + player.size * 8; plight.intensity = dark * (25 + player.size * 18);
+  const R = 25 + player.size * 8, c = camera.position;
+  if (!motesInit) { for (let i = 0; i < MOTES; i++) { motePos[i * 3] = c.x + rand(-R, R); motePos[i * 3 + 1] = c.y + rand(-R, R); motePos[i * 3 + 2] = c.z + rand(-R, R); } motesInit = true; }
+  for (let i = 0; i < MOTES; i++) {
+    for (let a = 0; a < 3; a++) {
+      const cc = a === 0 ? c.x : a === 1 ? c.y : c.z; let v = motePos[i * 3 + a];
+      if (a === 1) v -= dt * .15;
+      if (v - cc > R) v -= 2 * R; else if (cc - v > R) v += 2 * R;
+      motePos[i * 3 + a] = v;
+    }
+  }
+  moteGeo.attributes.position.needsUpdate = true;
+  moteMat.color.copy(moteLight).lerp(moteDeep, dark); jellyGlow.value = .2 + dark * .9;
+  moteMat.size = .05 + player.size * .05; pMat.size = .04 + player.size * .09;
+}
+
+// ---------- HUD ----------
+const radar = $('radar'), rctx = radar.getContext('2d');
+let hudT = 0;
+function updateHUD(dt) {
+  hudT -= dt; const hurt = $('hurt'); hurt.style.opacity = Math.max(0, (+hurt.style.opacity || 0) - dt * 1.5);
+  if (hudT > 0) return; hudT = .08;
+  $('hpFill').style.width = Math.max(0, player.hp) + '%';
+  $('stFill').style.width = player.stamina * 100 + '%';
+  $('grFill').style.width = player.growth * 100 + '%';
+  $('specName').textContent = player.spec.name;
+  const depth = Math.max(0, Math.round(TOP - player.pos.y));
+  $('sizeTxt').textContent = `${player.size.toFixed(2)} m • Tahap ${player.stage + 1}/${TIERS.length} • ↓${depth} m`;
+  $('score').textContent = score; $('eaten').textContent = eaten;
+  const ev = $('evolve'), can = player.growth >= 1 && player.stage < TIERS.length - 1 && player.alive;
+  ev.classList.toggle('hidden', !can);
+  if (can) ev.textContent = '🧬 Pilih Evolusi' + (IS_TOUCH ? '' : ' (E)');
+  targetT -= .08; if (targetT <= 0) targetFish = null;
+  const tg = $('target');
+  if (targetFish && !targetFish.gone && targetT > 0 && !targetFish.isBoss) {
+    tg.classList.remove('hidden'); $('targetName').textContent = `${targetFish.spec.name} • ${targetFish.size.toFixed(1)} m`;
+    $('targetFill').style.width = clamp(targetFish.hp / targetFish.maxHp, 0, 1) * 100 + '%';
+  } else tg.classList.add('hidden');
+  const showBoss = boss && !boss.gone && boss.pos.distanceTo(player.pos) < 200;
+  $('bossBar').classList.toggle('hidden', !showBoss);
+  if (showBoss) $('bossFill').style.width = clamp(boss.hp / boss.maxHp, 0, 1) * 100 + '%';
+  // radar
+  const W = radar.width, H = W / 2, RR = 40 + player.size * 12;
+  rctx.clearRect(0, 0, W, W);
+  rctx.strokeStyle = 'rgba(160,230,255,.2)'; rctx.beginPath(); rctx.arc(H, H, H * .5, 0, 7); rctx.stroke();
+  const fx = Math.sin(camYaw), fz = Math.cos(camYaw), rx = -Math.cos(camYaw), rz = Math.sin(camYaw);
+  const toScreen = (dx, dz) => [(dx * rx + dz * rz) / RR, -(dx * fx + dz * fz) / RR];
+  for (const n of fishes) {
+    if (n.gone) continue;
+    let [sx, sy] = toScreen(n.pos.x - player.pos.x, n.pos.z - player.pos.z);
+    const l2 = sx * sx + sy * sy;
+    if (l2 > 1) { if (!n.isBoss) continue; const l = Math.sqrt(l2); sx /= l; sy /= l; }
+    const ratio = n.size / player.size;
+    rctx.fillStyle = n.isBoss ? '#d16bff' : ratio < .45 ? '#5dff9a' : ratio < 1.1 ? '#ffd166' : (n.aggro || n.provoked > 0) ? '#ff4d5e' : '#ff9f43';
+    rctx.beginPath(); rctx.arc(H + sx * H * .95, H + sy * H * .95, n.isBoss ? 8 : clamp(1.5 + ratio * 1.5, 2, 6), 0, 7); rctx.fill();
+  }
+  rctx.fillStyle = '#7ae7ff';
+  for (const c of critters) {
+    if (!c.alive || c.size > player.size * .9) continue;
+    const [sx, sy] = toScreen(c.pos.x - player.pos.x, c.pos.z - player.pos.z);
+    if (sx * sx + sy * sy <= 1) rctx.fillRect(H + sx * H * .95 - 1.5, H + sy * H * .95 - 1.5, 3, 3);
+  }
+  rctx.fillStyle = '#ffb38a';
+  for (const c of corpses) {
+    const [sx, sy] = toScreen(c.pos.x - player.pos.x, c.pos.z - player.pos.z);
+    if (sx * sx + sy * sy <= 1) rctx.fillRect(H + sx * H * .95 - 2.5, H + sy * H * .95 - 2.5, 5, 5);
+  }
+  // arah palung
+  if (!inTrench(player.pos)) {
+    let [sx, sy] = toScreen(1, 0); const l = Math.hypot(sx, sy) || 1; sx /= l; sy /= l;
+    rctx.fillStyle = '#b48cff'; rctx.font = 'bold 18px system-ui'; rctx.textAlign = 'center'; rctx.textBaseline = 'middle';
+    rctx.fillText('☠', H + sx * H * .82, H + sy * H * .82);
+  }
+  rctx.fillStyle = '#fff'; rctx.beginPath(); rctx.moveTo(H, H - 7); rctx.lineTo(H - 5, H + 5); rctx.lineTo(H + 5, H + 5); rctx.fill();
+}
+
+// ---------- Kehidupan laut ramai (instanced) ----------
+let lifeReset = true;
+const dummy = new THREE.Object3D();
+// kawanan ikan kecil: satu InstancedMesh untuk ratusan ikan
+const SCHOOLS = IS_TOUCH ? 10 : 15, PER = IS_TOUCH ? 30 : 40;
+const swarmGeo = (() => {
+  const b = new THREE.SphereGeometry(.5, 10, 8).toNonIndexed(), p = b.attributes.position;
+  for (let i = 0; i < p.count; i++) { const z = p.getZ(i), tf = z < 0 ? 1 + z * 1.2 : 1; p.setXYZ(i, p.getX(i) * .22 * tf, p.getY(i) * .3 * tf, z); }
+  const tail = new THREE.BufferGeometry();
+  tail.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, -.42, 0, .2, -.74, 0, 0, -.6, 0, 0, -.42, 0, 0, -.6, 0, -.2, -.74], 3));
+  const g = mergeGeos([b, tail]), gp = g.attributes.position, cols = [];
+  for (let i = 0; i < gp.count; i++) { const v = .55 + .45 * smooth(.1, -.12, gp.getY(i)); cols.push(v, v, v); }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); return g;
+})();
+const swarmMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .35, metalness: .3, side: THREE.DoubleSide });
+swarmMat.onBeforeCompile = sh => {
+  sh.uniforms.uTime = uTime;
+  sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+    float ph = instanceMatrix[3].x * 3.1 + instanceMatrix[3].z * 1.7;
+    transformed.x += sin(uTime * 14.0 + ph) * .14 * clamp(-position.z / .7, 0.0, 1.0);`);
+};
+const swarm = new THREE.InstancedMesh(swarmGeo, swarmMat, SCHOOLS * PER);
+swarm.instanceMatrix.setUsage(THREE.DynamicDrawUsage); swarm.frustumCulled = false; scene.add(swarm);
+const SW_COLORS = [0xbfe3ff, 0xffd166, 0x7ae7ff, 0xff8fab, 0xc0ffb3, 0xffffff, 0xffa94d];
+const schools = [];
+for (let i = 0; i < SCHOOLS; i++) {
+  const s = { c: new V3(), vel: new V3(), target: new V3(), retarget: 0, size: .2, radius: 2, spin: rand(.15, .4) * (Math.random() < .5 ? 1 : -1), m: [] };
+  for (let j = 0; j < PER; j++) s.m.push({ off: new V3(), pos: new V3(), vel: new V3(), yaw: 0, pitch: 0, alive: true, ph: rand(0, 6) });
+  schools.push(s);
+}
+function schoolTarget(s) {
+  const R = 25 + s.size * 30;
+  const x = clamp(s.c.x + rand(-R, R), -WORLD + 10, WORLD - 10), z = clamp(s.c.z + rand(-R, R), -WORLD + 10, WORLD - 10), fh = floorH(x, z);
+  s.target.set(x, clamp(s.c.y + rand(-8, 8), fh + 2 + s.radius, Math.min(TOP - 4, fh + 45)), z); s.retarget = rand(6, 12);
+}
+function relocateSchool(s, nearMin, nearMax) {
+  const a = Math.random() * Math.PI * 2, d = rand(nearMin, nearMax);
+  const x = clamp(player.pos.x + Math.cos(a) * d, -WORLD + 10, WORLD - 10), z = clamp(player.pos.z + Math.sin(a) * d, -WORLD + 10, WORLD - 10), fh = floorH(x, z);
+  s.size = Math.max(.17, player.size * rand(.15, .32)); s.radius = 1.5 + s.size * 7;
+  s.c.set(x, clamp(player.pos.y + rand(-15, 15), fh + 2 + s.radius, TOP - 4 - s.radius), z); s.vel.set(0, 0, 0);
+  const col = new THREE.Color(pick(SW_COLORS));
+  s.m.forEach((m, j) => {
+    m.off.set(rand(-1, 1), rand(-.45, .45), rand(-1, 1)).multiplyScalar(s.radius);
+    m.pos.copy(s.c).add(m.off); m.vel.set(0, 0, 0); m.alive = true;
+    swarm.setColorAt(schools.indexOf(s) * PER + j, col.clone().offsetHSL(rand(-.02, .02), 0, rand(-.08, .08)));
+  });
+  swarm.instanceColor.needsUpdate = true; schoolTarget(s);
+}
+let swarmToastT = 0;
+function updateSchools(dt) {
+  if (lifeReset) { schools.forEach(s => relocateSchool(s, 8, 70 + player.size * 8)); jellies.forEach(j => relocateJelly(j, 6, 80)); critters.forEach(c => relocateCritter(c, 5, 70 + player.size * 6)); lifeReset = false; }
+  swarmToastT -= dt;
+  const ps = player.size, canEat = state === 'play' && player.alive;
+  player.fwd(_f); _m.copy(player.pos).addScaledVector(_f, ps * .45);
+  schools.forEach((s, si) => {
+    const pd = s.c.distanceTo(player.pos);
+    let alive = 0; for (const m of s.m) if (m.alive) alive++;
+    if (pd > 130 + ps * 10 || alive === 0 || s.size < ps * .06) { relocateSchool(s, 45 + ps * 5, 95 + ps * 9); return; }
+    s.retarget -= dt; if (s.retarget <= 0 || s.c.distanceTo(s.target) < s.radius) schoolTarget(s);
+    _d.subVectors(s.target, s.c).normalize();
+    const flee = ps > s.size * 2 && pd < s.radius + 4 + ps * 4;
+    if (flee) _d.copy(s.c).sub(player.pos).normalize().multiplyScalar(2);
+    const fh = floorH(s.c.x, s.c.z); if (s.c.y < fh + s.radius + 1.5) _d.y += 1;
+    const spd = (1.2 + s.size * 3) * (flee ? 2.2 : 1);
+    s.vel.lerp(_d.multiplyScalar(spd), 1 - Math.exp(-dt * 1.5)); s.c.addScaledVector(s.vel, dt);
+    s.c.y = clamp(s.c.y, fh + s.radius * .6 + 1, TOP - 3);
+    const ang = uTime.value * s.spin, ca = Math.cos(ang), sa = Math.sin(ang);
+    const scareR = 1.5 + ps * 2.8;
+    s.m.forEach((m, j) => {
+      const idx = si * PER + j;
+      if (!m.alive) { dummy.position.set(0, -1e4, 0); dummy.scale.setScalar(0); dummy.updateMatrix(); swarm.setMatrixAt(idx, dummy.matrix); return; }
+      _t.set(m.off.x * ca - m.off.z * sa, m.off.y + Math.sin(uTime.value * 1.3 + m.ph) * s.radius * .1, m.off.x * sa + m.off.z * ca).add(s.c);
+      const dx = m.pos.x - player.pos.x, dy = m.pos.y - player.pos.y, dz = m.pos.z - player.pos.z, dl = Math.hypot(dx, dy, dz) || 1;
+      if (ps > s.size * 2 && dl < scareR) { const k = (scareR - dl) / dl * 2; _t.x += dx * k; _t.y += dy * k; _t.z += dz * k; }
+      _d.subVectors(_t, m.pos).multiplyScalar(2.5);
+      const mx = spd * 2.6; if (_d.length() > mx) _d.setLength(mx);
+      m.vel.lerp(_d, 1 - Math.exp(-dt * 5)); m.pos.addScaledVector(m.vel, dt);
+      const v = m.vel.length();
+      if (v > .05) { m.yaw += angDiff(m.yaw, Math.atan2(m.vel.x, m.vel.z)) * (1 - Math.exp(-dt * 8)); m.pitch = lerp(m.pitch, -Math.asin(clamp(m.vel.y / v, -1, 1)) * .7, 1 - Math.exp(-dt * 6)); }
+      if (canEat && ps > s.size * 2.2 && _m.distanceTo(m.pos) < ps * .35 + s.size * .6) {
+        m.alive = false; emit(m.pos, 4, BLOOD, s.size * .3, s.size, 0, .8);
+        score += 2; eaten++; gainGrowth(.17 * Math.pow(s.size / ps, 1.6) * .35); player.hp = Math.min(100, player.hp + 2);
+        if (swarmToastT <= 0) { toast('🐟 Nyam! Kawanan ikan kecil', '#7dffb0'); swarmToastT = 2.5; } sfx.snap();
+      }
+      dummy.position.copy(m.pos); dummy.rotation.set(m.pitch, m.yaw, 0, 'YXZ'); dummy.scale.setScalar(s.size); dummy.updateMatrix();
+      swarm.setMatrixAt(idx, dummy.matrix);
+    });
+  });
+  swarm.instanceMatrix.needsUpdate = true;
+}
+
+// ubur-ubur berdenyut (menyengat ikan kecil)
+const JELLY = IS_TOUCH ? 30 : 46;
+const jellyGeo = (() => {
+  const dome = new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+  const parts = [dome];
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * Math.PI * 2, t = new THREE.PlaneGeometry(.12, 2.6, 1, 8); t.translate(0, -1.3, 0);
+    t.rotateY(a); t.translate(Math.cos(a) * .55, 0, Math.sin(a) * .55); parts.push(t);
+  }
+  return mergeGeos(parts);
+})();
+const jellyMat = new THREE.MeshStandardMaterial({ transparent: true, opacity: .55, side: THREE.DoubleSide, depthWrite: false, roughness: .2 });
+const jellyGlow = { value: .25 };
+jellyMat.onBeforeCompile = sh => {
+  sh.uniforms.uTime = uTime;
+  sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+    float ph = instanceMatrix[3].x * .9 + instanceMatrix[3].z * .6;
+    float pulse = sin(uTime * 2.2 + ph);
+    if (position.y > 0.0) { transformed.xz *= 1.0 + pulse * .14; transformed.y *= 1.0 - pulse * .12; }
+    else { float k = -position.y; transformed.x += sin(uTime * 1.7 + ph + k * 2.0) * .12 * k; transformed.z += cos(uTime * 1.4 + ph + k * 1.6) * .12 * k; }`);
+  sh.uniforms.uGlow = jellyGlow;
+  sh.fragmentShader = 'uniform float uGlow;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+    totalEmissiveRadiance += vColor * uGlow;`);
+};
+const jellyMesh = new THREE.InstancedMesh(jellyGeo, jellyMat, JELLY);
+jellyMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); jellyMesh.frustumCulled = false; scene.add(jellyMesh);
+const JPAL = [0xff9ad5, 0xc29bff, 0x8ff0ff, 0xffd6a5, 0xa0ffcf];
+const jellies = Array.from({ length: JELLY }, () => ({ pos: new V3(), size: 1, ph: rand(0, 6), sting: 0, dir: rand(0, 6) }));
+function relocateJelly(j, a0, a1) {
+  const a = Math.random() * Math.PI * 2, d = rand(a0, a1);
+  const x = clamp(player.pos.x + Math.cos(a) * d, -WORLD + 5, WORLD - 5), z = clamp(player.pos.z + Math.sin(a) * d, -WORLD + 5, WORLD - 5), fh = floorH(x, z);
+  const deep = fh < -60;
+  j.size = deep ? rand(.8, 2.5) : rand(.25, 1.1);
+  j.pos.set(x, clamp(player.pos.y + rand(-20, 25), fh + j.size * 3 + 1, TOP - j.size - 2), z);
+  jellyMesh.setColorAt(jellies.indexOf(j), new THREE.Color(deep ? pick([0x3dfff0, 0xff4fd8, 0x7a5cff]) : pick(JPAL)));
+  jellyMesh.instanceColor.needsUpdate = true;
+}
+function updateJellies(dt) {
+  const ps = player.size, canHurt = state === 'play' && player.alive;
+  jellies.forEach((j, i) => {
+    if (j.pos.distanceTo(player.pos) > 100 + ps * 8) relocateJelly(j, 30 + ps * 3, 90 + ps * 6);
+    const pulse = Math.max(0, Math.sin(uTime.value * 2.2 + j.ph));
+    j.dir += dt * .05;
+    j.pos.x += Math.cos(j.dir) * dt * .15; j.pos.z += Math.sin(j.dir) * dt * .15;
+    j.pos.y += (pulse * .9 - .3) * dt * j.size;
+    const fh = floorH(j.pos.x, j.pos.z); j.pos.y = clamp(j.pos.y, fh + j.size * 3, TOP - j.size - 1);
+    j.sting -= dt;
+    if (canHurt && j.sting <= 0 && ps < j.size * 4) {
+      _t.copy(j.pos); _t.y -= j.size * .9;
+      if (_t.distanceTo(player.pos) < j.size * 1.3 + ps * .3) {
+        j.sting = 1.2; player.hp -= 5; lastHurt = 0; $('hurt').style.opacity = .45; shake = Math.min(1, shake + .3);
+        toast('⚡ Tersengat ubur-ubur!', '#ff9ad5'); sfx.hurt();
+        if (player.hp <= 0) die('Ubur-ubur');
+      }
+    }
+    dummy.position.copy(j.pos); dummy.rotation.set(0, j.ph, 0); dummy.scale.setScalar(j.size); dummy.updateMatrix();
+    jellyMesh.setMatrixAt(i, dummy.matrix);
+  });
+  jellyMesh.instanceMatrix.needsUpdate = true;
+}
+
+// ---------- Binatang laut lain (kepiting, gurita, penyu, dll) ----------
+// part id: 0 diam, 1 kaki jalan, 2 tentakel, 3 capit, 4 ekor kibas, 5 sayap pari, 6 sirip penyu, 7 tentakel cumi
+const QM = (x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = sx, sz = sx) =>
+  new THREE.Matrix4().compose(new V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new V3(sx, sy, sz));
+const SPH = () => new THREE.SphereGeometry(1, 10, 8);
+const CYL = (a, b, h, n = 6) => new THREE.CylinderGeometry(a, b, h, n);
+function prt(geo, color, part = 0, mtx) {
+  if (mtx) geo.applyMatrix4(mtx);
+  const g = geo.index ? geo.toNonIndexed() : geo, n = g.attributes.position.count, c = new THREE.Color(color);
+  const cols = new Float32Array(n * 3), pa = new Float32Array(n).fill(part);
+  for (let i = 0; i < n; i++) { cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(cols, 3)); g.setAttribute('aPart', new THREE.BufferAttribute(pa, 1)); return g;
+}
+function mergeParts(list) {
+  const out = new THREE.BufferGeometry();
+  for (const [name, size] of [['position', 3], ['color', 3], ['aPart', 1]]) {
+    const arrs = list.map(g => g.attributes[name].array), arr = new Float32Array(arrs.reduce((n, a) => n + a.length, 0)); let o = 0;
+    for (const a of arrs) { arr.set(a, o); o += a.length; }
+    out.setAttribute(name, new THREE.BufferAttribute(arr, size));
+  }
+  out.computeVertexNormals(); return out;
+}
+const dirQ = (dx, dy, dz) => new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), new V3(dx, dy, dz).normalize());
+const limb = (len, r0, r1, base, dir, color, part) => { const g = CYL(r0, r1, len); g.translate(0, len / 2, 0); return prt(g, color, part, new THREE.Matrix4().compose(base, dir, new V3(1, 1, 1))); };
+function legsFor(bodyW, zs, y, color, scale = 1) {
+  const out = [];
+  for (const sd of [1, -1]) for (const z of zs) {
+    out.push(limb(.3 * scale, .025 * scale, .02 * scale, new V3(sd * bodyW, y, z), dirQ(sd * .85, -.5, 0), color, 1));
+    out.push(limb(.2 * scale, .02 * scale, .008 * scale, new V3(sd * (bodyW + .25 * scale), y - .15 * scale, z), dirQ(sd * .3, -.95, 0), color, 1));
+  }
+  return out;
+}
+const eyesAt = (x, y, z, r) => [prt(SPH(), 0x0b0b0b, 0, QM(x, y, z, 0, 0, 0, r)), prt(SPH(), 0x0b0b0b, 0, QM(-x, y, z, 0, 0, 0, r))];
+
+const CR_GEO = {
+  kepiting: () => mergeParts([
+    prt(SPH(), 0xffffff, 0, QM(0, .3, 0, 0, 0, 0, .5, .17, .38)), prt(SPH(), 0xf2e3c6, 0, QM(0, .25, 0, 0, 0, 0, .44, .1, .33)),
+    prt(CYL(.02, .02, .14), 0xffffff, 0, QM(.1, .46, .3)), prt(CYL(.02, .02, .14), 0xffffff, 0, QM(-.1, .46, .3)), ...eyesAt(.1, .54, .3, .045),
+    prt(CYL(.04, .05, .3), 0xffffff, 3, QM(.3, .31, .36, Math.PI / 2, 0, 0)), prt(CYL(.04, .05, .3), 0xffffff, 3, QM(-.3, .31, .36, Math.PI / 2, 0, 0)),
+    prt(SPH(), 0xffffff, 3, QM(.34, .33, .56, 0, 0, 0, .12, .09, .18)), prt(SPH(), 0xffffff, 3, QM(-.34, .33, .56, 0, 0, 0, .12, .09, .18)),
+    prt(SPH(), 0x222222, 3, QM(.34, .33, .71, 0, 0, 0, .05, .05, .07)), prt(SPH(), 0x222222, 3, QM(-.34, .33, .71, 0, 0, 0, .05, .05, .07)),
+    ...legsFor(.42, [.12, -.04, -.2], .28, 0xffffff),
+  ]),
+  lobster: () => {
+    const p = [prt(SPH(), 0xffffff, 0, QM(0, .22, .28, 0, 0, 0, .17, .15, .3))];
+    for (let i = 0; i < 6; i++) p.push(prt(SPH(), 0xffffff, 4, QM(0, .21 - i * .008, .02 - i * .1, 0, 0, 0, .15 - i * .015, .12 - i * .012, .08)));
+    p.push(prt(SPH(), 0xffffff, 4, QM(0, .17, -.62, 0, 0, 0, .16, .025, .09)));
+    for (const sd of [1, -1]) {
+      p.push(limb(.3, .035, .03, new V3(sd * .12, .22, .48), dirQ(sd * .5, 0, 1), 0xffffff, 3));
+      p.push(prt(SPH(), 0xffffff, 3, QM(sd * .28, .22, .86, 0, 0, 0, .11, .07, .22)));
+      p.push(limb(.9, .01, .004, new V3(sd * .05, .28, .55), dirQ(sd * .35, .25, 1), 0xffffff, 0));
+    }
+    p.push(...eyesAt(.07, .32, .5, .035), ...legsFor(.14, [.35, .22, .1], .2, 0xffffff, .7));
+    return mergeParts(p);
+  },
+  udang: () => {
+    const p = [];
+    for (let i = 0; i < 6; i++) p.push(prt(SPH(), 0xffffff, i > 2 ? 4 : 0, QM(0, .15 - i * i * .012, .3 - i * .13, .2 * i, 0, 0, .09 - i * .008, .1 - i * .009, .09)));
+    p.push(prt(SPH(), 0xffffff, 4, QM(0, -.25, -.45, .9, 0, 0, .1, .02, .08)));
+    for (const sd of [1, -1]) p.push(limb(.8, .007, .003, new V3(sd * .03, .18, .38), dirQ(sd * .25, .3, 1), 0xffffff, 0));
+    p.push(...eyesAt(.06, .2, .38, .03));
+    return mergeParts(p);
+  },
+  gurita: () => {
+    const p = [prt(SPH(), 0xffffff, 0, QM(0, .55, -.08, -.4, 0, 0, .32, .42, .32)),
+      prt(SPH(), 0xfff4e0, 0, QM(.17, .42, .12, 0, 0, 0, .075)), prt(SPH(), 0xfff4e0, 0, QM(-.17, .42, .12, 0, 0, 0, .075)), ...eyesAt(.21, .42, .16, .038)];
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; p.push(limb(.9, .07, .015, new V3(Math.cos(a) * .12, .28, Math.sin(a) * .12), dirQ(Math.cos(a), -.2, Math.sin(a)), 0xffffff, 2)); }
+    return mergeParts(p);
+  },
+  penyu: () => mergeParts([
+    prt(SPH(), 0x6b7a3a, 0, QM(0, .26, 0, 0, 0, 0, .42, .16, .52)), prt(SPH(), 0xe8d9a8, 0, QM(0, .19, 0, 0, 0, 0, .38, .08, .48)),
+    prt(SPH(), 0x4a5526, 0, QM(0, .39, .05, 0, 0, 0, .18, .04, .22)), prt(SPH(), 0x4a5526, 0, QM(.2, .35, -.15, 0, 0, 0, .12, .04, .14)), prt(SPH(), 0x4a5526, 0, QM(-.2, .35, -.15, 0, 0, 0, .12, .04, .14)),
+    prt(SPH(), 0x8a9a5a, 0, QM(0, .25, .62, 0, 0, 0, .11, .1, .15)), ...eyesAt(.07, .29, .7, .022),
+    prt(SPH(), 0x8a9a5a, 6, QM(.5, .22, .22, 0, .5, 0, .38, .03, .12)), prt(SPH(), 0x8a9a5a, 6, QM(-.5, .22, .22, 0, -.5, 0, .38, .03, .12)),
+    prt(SPH(), 0x8a9a5a, 6, QM(.3, .2, -.45, 0, -.6, 0, .14, .03, .08)), prt(SPH(), 0x8a9a5a, 6, QM(-.3, .2, -.45, 0, .6, 0, .14, .03, .08)),
+  ]),
+  manta: () => {
+    const g = new THREE.SphereGeometry(1, 28, 10).toNonIndexed(), pp = g.attributes.position;
+    for (let i = 0; i < pp.count; i++) {
+      const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i), ax = Math.abs(x);
+      pp.setXYZ(i, x, y * .07 * (1 - ax * .7), z * .42 * (1 - .55 * ax) - ax * .15);
+    }
+    const w = prt(g, 0xffffff, 5), wc = w.attributes.color, top = new THREE.Color(0x1c2430), bel = new THREE.Color(0xf0f0f0);
+    for (let i = 0; i < pp.count; i++) { const c = pp.getY(i) > 0 ? top : bel; wc.setXYZ(i, c.r, c.g, c.b); }
+    return mergeParts([w, limb(1, .012, .004, new V3(0, 0, -.35), dirQ(0, 0, -1), 0x1c2430, 0),
+      prt(SPH(), 0x1c2430, 0, QM(.14, 0, .45, 0, 0, 0, .04, .02, .1)), prt(SPH(), 0x1c2430, 0, QM(-.14, 0, .45, 0, 0, 0, .04, .02, .1))]);
+  },
+  cumi: () => {
+    const mantle = new THREE.ConeGeometry(.13, .7, 10); mantle.rotateX(-Math.PI / 2);
+    const p = [prt(mantle, 0xffffff, 0, QM(0, 0, -.12)), prt(SPH(), 0xffffff, 0, QM(.09, 0, -.4, 0, 0, 0, .12, .015, .09)), prt(SPH(), 0xffffff, 0, QM(-.09, 0, -.4, 0, 0, 0, .12, .015, .09)),
+      prt(SPH(), 0xffffff, 0, QM(0, 0, .25, 0, 0, 0, .09, .08, .08)), ...eyesAt(.075, .01, .27, .035)];
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; p.push(limb(k < 2 ? .7 : .4, .015, .004, new V3(Math.cos(a) * .04, Math.sin(a) * .04, .3), dirQ(Math.cos(a) * .12, Math.sin(a) * .12, 1), 0xffffff, 7)); }
+    return mergeParts(p);
+  },
+  kudalaut: () => {
+    const p = [];
+    for (let i = 0; i < 7; i++) { const t = i / 6; p.push(prt(SPH(), 0xffffff, 0, QM(0, .45 - t * .75, .06 * Math.sin(t * 3), 0, 0, 0, .1 - t * .04, .09, .1 - t * .03))); }
+    for (let i = 0; i < 6; i++) { const a = i * .9; p.push(prt(SPH(), 0xffffff, 0, QM(0, -.35 - Math.sin(a) * .06, -.04 + Math.cos(a) * .06 - i * .01, 0, 0, 0, .03))); }
+    p.push(prt(SPH(), 0xffffff, 0, QM(0, .55, .05, 0, 0, 0, .085)), prt(CYL(.025, .035, .18), 0xffffff, 0, QM(0, .52, .17, Math.PI / 2 + .3, 0, 0)),
+      prt(SPH(), 0xffffff, 4, QM(0, .15, -.12, 0, 0, 0, .015, .1, .05)), ...eyesAt(.07, .58, .08, .022));
+    return mergeParts(p);
+  },
+};
+const critterMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .55, side: THREE.DoubleSide });
+critterMat.onBeforeCompile = sh => {
+  sh.uniforms.uTime = uTime;
+  sh.vertexShader = 'uniform float uTime;\nattribute float aPart;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+    float ph = instanceMatrix[3].x * 1.3 + instanceMatrix[3].z * .7;
+    if (aPart > .5 && aPart < 1.5) transformed.y += sin(uTime * 16.0 + ph + position.z * 9.0 + sign(position.x) * 1.6) * .035;
+    else if (aPart > 1.5 && aPart < 2.5) { float k = length(position.xz); transformed.y += sin(uTime * 3.0 + k * 7.0 + ph + atan(position.z, position.x) * 2.0) * .09 * k; }
+    else if (aPart > 2.5 && aPart < 3.5) transformed.y += sin(uTime * 5.0 + ph) * .03;
+    else if (aPart > 3.5 && aPart < 4.5) transformed.y += sin(uTime * 10.0 + ph) * .05 * clamp(-position.z * 2.0, 0.0, 1.0);
+    else if (aPart > 4.5 && aPart < 5.5) transformed.y += sin(uTime * 1.8 + ph - abs(position.x) * 1.2) * .32 * position.x * position.x;
+    else if (aPart > 5.5 && aPart < 6.5) { transformed.y += sin(uTime * 2.4 + ph) * .2 * abs(position.x); transformed.z += cos(uTime * 2.4 + ph) * .08 * abs(position.x); }
+    else if (aPart > 6.5) transformed.x += sin(uTime * 6.0 + ph + position.z * 10.0) * .18 * max(position.z - .25, 0.0);`);
+};
+const TM = IS_TOUCH ? .6 : 1;
+const CRITTER_KINDS = {
+  kepiting: { name: 'Kepiting', n: 70, size: [.18, .55], walk: true, side: true, speed: .9, tough: 2, pinch: true, tints: [0xff6b3d, 0xe63946, 0x4a90e2, 0xffa94d, 0xb5651d] },
+  lobster: { name: 'Lobster', n: 18, size: [.4, .9], walk: true, speed: .6, tough: 2, pinch: true, tints: [0xc0392b, 0x1f4e79, 0xd35400] },
+  udang: { name: 'Udang', n: 45, size: [.12, .25], alt: [.3, 3], speed: 1.4, dart: true, tough: 1, tints: [0xff9e80, 0xffc2b3, 0xff7096] },
+  gurita: { name: 'Gurita', n: 14, size: [.4, 1.3], walk: true, speed: .7, tough: 2, ink: true, tints: [0xd9480f, 0x9c36b5, 0xc92a2a, 0xe8a87c] },
+  penyu: { name: 'Penyu', n: 10, size: [1, 1.8], alt: [3, 30], speed: 1, tough: 4, shallow: true, tints: [0xffffff] },
+  manta: { name: 'Pari Manta', n: 6, size: [3, 6], alt: [6, 40], speed: 1.1, tough: 5, shallow: true, tints: [0xffffff] },
+  cumi: { name: 'Cumi-cumi', n: 32, size: [.25, .6], alt: [3, 25], speed: 1.5, tough: 1, school: 6, tints: [0xffb3c6, 0xffd6e0, 0xff8fab] },
+  kudalaut: { name: 'Kuda Laut', n: 28, size: [.12, .25], alt: [.5, 4], speed: .25, tough: 1, upright: true, shallow: true, tints: [0xffc14d, 0xff7f50, 0xb388ff, 0x7ae7ff] },
+};
+const critters = [];
+for (const [key, K] of Object.entries(CRITTER_KINDS)) {
+  const n = Math.max(2, Math.round(K.n * TM));
+  K.mesh = new THREE.InstancedMesh(CR_GEO[key](), critterMat, n);
+  K.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); K.mesh.frustumCulled = false; scene.add(K.mesh);
+  for (let i = 0; i < n; i++) {
+    const c = { K, i, isCritter: true, alive: false, pos: new V3(0, -1e4, 0), vel: new V3(), target: new V3(), yaw: rand(0, 6), pitch: 0,
+      size: 1, hp: 1, rt: 0, ph: rand(0, 6), pinchCd: 0, fleeT: 0, dartT: 0, inkCd: 0, spec: { name: K.name } };
+    c.leader = K.school && i % K.school ? null : undefined;
+    critters.push(c);
+    K.mesh.setColorAt(i, new THREE.Color(pick(K.tints)));
+  }
+  for (const c of critters) if (c.K === K && c.leader === null) c.leader = critters.find(o => o.K === K && o.i === c.i - c.i % K.school);
+}
+function critterY(c, x, z) {
+  const fh = floorH(x, z), K = c.K;
+  if (K.walk) return fh + c.size * .02;
+  const sm = .5 + c.size * .5;
+  const alt = K.alt || [1, 4];
+  return clamp(fh + rand(alt[0], alt[1]) * sm, fh + c.size, TOP - c.size - 2);
+}
+function relocateCritter(c, a0, a1) {
+  const K = c.K;
+  let x, z, ok = false;
+  for (let t = 0; t < 6 && !ok; t++) {
+    if (c.leader && c.leader.alive) { x = c.leader.pos.x + rand(-2, 2) * c.leader.size; z = c.leader.pos.z + rand(-2, 2) * c.leader.size; }
+    else { const a = Math.random() * Math.PI * 2, d = rand(a0, a1); x = player.pos.x + Math.cos(a) * d; z = player.pos.z + Math.sin(a) * d; }
+    x = clamp(x, -WORLD + 5, WORLD - 5); z = clamp(z, -WORLD + 5, WORLD - 5);
+    ok = !K.shallow || floorH(x, z) > -40;
+  }
+  c.alive = ok;
+  c.size = rand(K.size[0], K.size[1]) * (1 + player.size * .12);
+  c.pos.set(x, critterY(c, x, z), z); c.vel.set(0, 0, 0); c.hp = K.tough; c.rt = 0; c.fleeT = 0;
+}
+function critterTarget(c) {
+  const K = c.K, R = 4 + c.size * 8;
+  let x = c.pos.x + rand(-R, R), z = c.pos.z + rand(-R, R);
+  if (c.leader && c.leader.alive) { x = c.leader.target.x + rand(-1.5, 1.5) * c.leader.size; z = c.leader.target.z + rand(-1.5, 1.5) * c.leader.size; }
+  x = clamp(x, -WORLD + 5, WORLD - 5); z = clamp(z, -WORLD + 5, WORLD - 5);
+  c.target.set(x, K.walk ? 0 : (c.leader && c.leader.alive ? c.leader.target.y + rand(-1, 1) * c.size : critterY(c, x, z)), z);
+  c.rt = rand(3, 8);
+}
+function eatCritter(c) {
+  const ps = player.size, ratio = Math.min(1.2, c.size / ps);
+  c.alive = false;
+  emit(c.pos, 12, c.K.ink ? 0x30101a : BLOOD, c.size * .3, c.size, 0, 1);
+  const pts = Math.round(c.size * c.size * 40 + 5); score += pts; eaten++;
+  player.hp = Math.min(100, player.hp + 5 + ratio * 20);
+  toast(`+${pts}  ${c.K.name}`, '#7ae7ff'); sfx.eat();
+  gainGrowth(.17 * Math.pow(ratio, 1.6));
+}
+let tooBigToastT = 0;
+function biteCritter(c) {
+  const ratio = c.size / player.size;
+  if (ratio > 1.2) { sfx.snap(); if (tooBigToastT <= 0) { toast(`${c.K.name} terlalu besar!`, '#ffd166'); tooBigToastT = 2; } c.fleeT = 3; return; }
+  c.hp -= ratio < .45 ? 99 : 1; c.fleeT = 3;
+  emit(c.pos, 8, BLOOD, c.size * .2, c.size, 0, .8); sfx.hit();
+  if (c.hp <= 0) eatCritter(c);
+}
+function updateCritters(dt) {
+  const ps = player.size, canPlay = state === 'play' && player.alive;
+  tooBigToastT -= dt;
+  player.fwd(_f); _m.copy(player.pos).addScaledVector(_f, ps * .45);
+  for (const c of critters) {
+    const K = c.K;
+    const d = c.pos.distanceTo(player.pos);
+    if (!c.alive || d > 95 + ps * 8) {
+      if (c.alive || Math.random() < dt * .3) relocateCritter(c, 30 + ps * 3, 85 + ps * 6);
+      if (!c.alive) { dummy.position.set(0, -1e4, 0); dummy.scale.setScalar(0); dummy.updateMatrix(); K.mesh.setMatrixAt(c.i, dummy.matrix); continue; }
+    }
+    c.fleeT -= dt; c.pinchCd -= dt; c.inkCd -= dt;
+    let mul = 1;
+    const scared = canPlay && ps > c.size * 1.4 && d < 3 + ps * 3 + c.size;
+    if (scared || c.fleeT > 0) {
+      _d.subVectors(c.pos, player.pos); if (K.walk) _d.y = 0; _d.normalize(); mul = K.ink ? 4 : 2.5;
+      if (K.ink && c.inkCd <= 0) { c.inkCd = 6; emit(c.pos, 30, 0x0a0a12, c.size * .5, c.size * 1.5, 0, 2.5); }
+    } else {
+      c.rt -= dt;
+      if (c.rt <= 0 || (K.walk ? Math.hypot(c.target.x - c.pos.x, c.target.z - c.pos.z) : c.pos.distanceTo(c.target)) < c.size) critterTarget(c);
+      _d.subVectors(c.target, c.pos); if (K.walk) _d.y = 0;
+      const l = _d.length(); if (l > .001) _d.multiplyScalar(1 / l);
+      if (K.dart) { c.dartT -= dt; if (c.dartT <= -2 && Math.random() < dt) c.dartT = .3; if (c.dartT > 0) mul = 4; }
+    }
+    const spd = K.speed * (.5 + c.size) * mul;
+    c.vel.lerp(_d.multiplyScalar(spd), 1 - Math.exp(-dt * 3));
+    c.pos.addScaledVector(c.vel, dt);
+    c.pos.x = clamp(c.pos.x, -WORLD + 2, WORLD - 2); c.pos.z = clamp(c.pos.z, -WORLD + 2, WORLD - 2);
+    const fh = floorH(c.pos.x, c.pos.z);
+    if (K.walk) c.pos.y = fh + c.size * .02;
+    else c.pos.y = clamp(c.pos.y, fh + c.size * .6, TOP - c.size);
+    const v = c.vel.length();
+    if (v > .03) {
+      const ty = Math.atan2(c.vel.x, c.vel.z) - (K.side ? Math.PI / 2 : 0);
+      c.yaw += angDiff(c.yaw, ty) * (1 - Math.exp(-dt * 5));
+      c.pitch = K.walk || K.upright ? 0 : lerp(c.pitch, -Math.asin(clamp(c.vel.y / v, -1, 1)) * .6, 1 - Math.exp(-dt * 4));
+    }
+    if (canPlay) {
+      if (K.pinch && c.size > ps * 1.1 && c.pinchCd <= 0 && d < c.size * .6 + ps * .4) {
+        c.pinchCd = 1.5; player.hp -= 4 + (c.size / ps) * 4; lastHurt = 0; $('hurt').style.opacity = .45; shake = Math.min(1, shake + .3);
+        toast(`🦀 Dicapit ${K.name}!`, '#ff8a9a'); sfx.hurt(); if (player.hp <= 0) die(K.name);
+      }
+      if (c.size < ps * .35 && _m.distanceTo(c.pos) < ps * .35 + c.size * .5) { eatCritter(c); continue; }
+    }
+    const bob = K.upright ? Math.sin(uTime.value * 1.5 + c.ph) * c.size * .15 : 0;
+    dummy.position.set(c.pos.x, c.pos.y + bob, c.pos.z); dummy.rotation.set(c.pitch, c.yaw, 0, 'YXZ'); dummy.scale.setScalar(c.size); dummy.updateMatrix();
+    K.mesh.setMatrixAt(c.i, dummy.matrix);
+  }
+  for (const K of Object.values(CRITTER_KINDS)) K.mesh.instanceMatrix.needsUpdate = true;
+}
+
+// gelembung dari celah dasar laut
+const vents = Array.from({ length: 70 }, () => { const x = rand(-WORLD, WORLD), z = rand(-WORLD, WORLD); return new V3(x, floorH(x, z) + .2, z); });
+function updateVents(dt) {
+  const R = 90 + player.size * 8;
+  for (const v of vents) if (Math.abs(v.x - player.pos.x) < R && Math.abs(v.z - player.pos.z) < R && Math.random() < dt * 2.5) emit(v, 1, 0xe8fbff, .25, .15, 2.2, 4);
+}
+
+// ---------- Loop ----------
+resetWorld();
+const clock = new THREE.Clock();
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), .05);
+  if (state !== 'pause' && state !== 'evolve') {
+    uTime.value += dt;
+    if (state === 'play') updatePlayer(dt);
+    if (state === 'egg') updateEgg(dt);
+    for (const n of fishes) {
+      if (n.gone) continue;
+      updateNPC(n, dt);
+      if (n.gone || n.isBoss) continue;
+      const dd = n.pos.distanceTo(player.pos);
+      const tooSmall = n.size < player.size * .12 && dd > 20 + player.size * 4;
+      if ((dd > despawnD() || tooSmall) && n !== targetFish) n.dispose();
+    }
+    fishes = fishes.filter(f => !f.gone);
+    updateCorpses(dt);
+    let sp = 0; while (fishes.length < MAX_FISH && sp++ < 2) spawnGroup(spawnNear(), spawnFar());
+    if (!boss && state === 'play') { bossTimer -= dt; if (bossTimer <= 0) spawnBoss(); }
+    updateSchools(dt); updateJellies(dt); updateVents(dt); updateCritters(dt);
+    updateParts(dt);
+    updateCamera(dt);
+    updateEnv(dt);
+    if (state === 'play') updateHUD(dt);
+  }
+  renderer.render(scene, camera);
+}
+frame();
+</script>
+</body>
+</html>
