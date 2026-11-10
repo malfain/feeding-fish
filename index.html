@@ -34,10 +34,6 @@
   #target .track, #bossBar .track { margin-top: 5px; }
   #bossBar { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); padding: 7px 14px; width: min(360px, 60vw); text-align: center; font-size: 14px; font-weight: 900; letter-spacing: 3px; color: #e7b8ff; }
   #cross { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,.6); }
-  #evolve { pointer-events: auto; position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%);
-    padding: 12px 22px; font-size: 16px; font-weight: 800; color: #04263a; background: linear-gradient(90deg,#5dffb0,#b5ff6a);
-    border: none; border-radius: 999px; box-shadow: 0 0 24px rgba(120,255,180,.6); animation: pulse 1.2s infinite; cursor: pointer; white-space: nowrap; }
-  @keyframes pulse { 50% { transform: translateX(-50%) scale(1.06); } }
   #feed { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
   .toast { font-weight: 800; font-size: 16px; text-shadow: 0 2px 6px rgba(0,0,0,.7); animation: rise 1.8s forwards; max-width: 92vw; text-align: center; }
   @keyframes rise { 0% { opacity: 0; transform: translateY(10px) scale(.9); } 12% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }
@@ -86,7 +82,7 @@
   #btnPause { left: 22px; bottom: 176px; width: 42px; height: 42px; font-size: 12px; }
   @media (max-width: 600px) {
     #stats { width: 170px; padding: 8px 10px; } #specName { font-size: 15px; } #radar { width: 92px; height: 92px; }
-    #hint { display: none; } #evolve { bottom: 190px; font-size: 14px; } #bossBar { top: 186px; } #target { top: 186px; width: 60vw; }
+    #hint { display: none; } #bossBar { top: 186px; } #target { top: 186px; width: 60vw; }
     .card2 { flex-basis: 140px; padding: 10px; } .cd { display: none; }
   }
 </style>
@@ -100,7 +96,7 @@
     <div id="sizeTxt">0.50 m</div>
     <div class="bar"><span>❤</span><div class="track"><div id="hpFill" class="fill hp"></div></div></div>
     <div class="bar"><span>⚡</span><div class="track"><div id="stFill" class="fill st"></div></div></div>
-    <div class="bar"><span>🧬</span><div class="track"><div id="grFill" class="fill gr"></div></div></div>
+    <div class="bar"><span>⭐</span><div class="track"><div id="grFill" class="fill gr"></div></div></div>
   </div>
   <div id="scorePanel" class="panel">
     <div>Skor <b id="score">0</b></div>
@@ -110,9 +106,8 @@
   <div id="target" class="panel hidden"><div id="targetName"></div><div class="track"><div id="targetFill" class="fill hp"></div></div></div>
   <div id="bossBar" class="panel hidden">☠ LEVIATHAN ☠<div class="track"><div id="bossFill" class="fill boss"></div></div></div>
   <div id="cross"></div>
-  <button id="evolve" class="hidden"></button>
   <div id="feed"></div>
-  <div id="hint">W maju • Mouse arahkan (atas/bawah) • Klik/F gigit • Shift ngebut • Spasi naik • C turun • E evolusi • M suara</div>
+  <div id="hint">W maju • Mouse arahkan (atas/bawah) • Klik/F gigit • Shift ngebut • Spasi naik • C turun • M suara</div>
 </div>
 <div id="hurt"></div>
 <div id="hatch" class="panel hidden">
@@ -133,25 +128,13 @@
 <div id="start" class="overlay">
   <div class="card panel">
     <h1>IKAN MAKAN IKAN</h1>
-    <div class="sub">Menetas dari telur, makan yang kecil, hindari yang besar, berevolusi, lalu taklukkan Leviathan di palung gelap!</div>
-    <div style="font-weight:700">Pilih ikan awalmu</div>
-    <div class="cards" id="starterCards"></div>
+    <div class="sub">Menetas dari telur, makan yang kecil, hindari yang besar, naik level sampai raksasa, lalu taklukkan Leviathan di palung gelap!</div>
     <div class="keys" id="keysTxt">
       <b>W</b> maju • <b>Mouse</b> arahkan (gerak ke bawah = menukik) • <b>Klik / F</b> gigit<br>
-      <b>Shift</b> ngebut • <b>Spasi</b> naik • <b>C</b> turun • <b>E</b> evolusi
+      <b>Shift</b> ngebut • <b>Spasi</b> naik • <b>C</b> turun
     </div>
     <button class="btn" id="playBtn">MAIN</button>
     <div class="sub" id="bestTxt" style="margin-top:12px;font-size:13px"></div>
-  </div>
-</div>
-
-<div id="evo" class="overlay hidden">
-  <div class="card panel">
-    <h2>🧬 Pilih Evolusi</h2>
-    <div class="sub" id="evoSub">Tahap berikutnya</div>
-    <div class="cards" id="evoCards"></div>
-    <div class="sub" style="font-size:12px">Klik kartu untuk berevolusi</div>
-    <button class="btn" id="laterBtn" style="font-size:14px;padding:9px 22px;background:rgba(255,255,255,.15);color:var(--txt);box-shadow:none">Nanti saja</button>
   </div>
 </div>
 
@@ -162,7 +145,7 @@
 <div id="dead" class="overlay hidden">
   <div class="card panel">
     <div id="deadTitle">Kamu dimakan!</div>
-    <div class="stat"><span>Spesies terakhir</span><b id="dSpec"></b></div>
+    <div class="stat"><span>Level</span><b id="dSpec"></b></div>
     <div class="stat"><span>Ukuran</span><b id="dSize"></b></div>
     <div class="stat"><span>Ikan dimakan</span><b id="dEaten"></b></div>
     <div class="stat"><span>Skor</span><b id="dScore"></b></div>
@@ -222,8 +205,9 @@ const SPECIES = {
   goblin:    { name: 'Hiu Goblin', base: 4.6, w: .2, h: .22, color: 0xb98a8f, belly: 0xd8b2b5, fin: 0xa47a80, tail: 'shark', dorsal: .18, dType: 'shark', speed: 1, bite: 1.5, carn: true, deep: true, eye: .025 },
   leviathan: { name: 'Leviathan', base: 40, w: .14, h: .16, color: 0x1a1030, belly: 0x3c2a5a, fin: 0x2a1848, tail: 'fork', dorsal: .2, dType: 'shark', speed: 1, bite: 2.5, carn: true, deep: true, boss: true, glowEyes: true, spots: 0x5a2cc0, eye: .02, taper: .8 },
 };
-const TIERS = [['koki', 'badut'], ['piranha', 'kakap'], ['bass', 'kerapu'], ['barakuda', 'todak'], ['tuna', 'hiukarang'], ['hiuputih', 'hiumacan'], ['orca', 'sperma'], ['megalodon']];
-const TIER_BASE = [.5, .8, 1.3, 2.1, 3.4, 5.4, 8.6, 14];
+// Pemain selalu Ikan Mas Koki; naik level = makin besar & kuat (Lv 1: 0.5 m → Lv 20: ±22 m)
+const MAX_LEVEL = 20, LEVEL_GROW = Math.pow(44, 1 / (MAX_LEVEL - 1)), LEVEL_GAIN = 2.3;
+const PLAYER_SPEC = { ...SPECIES.koki };
 const SHALLOW_LIST = Object.values(SPECIES).filter(s => !s.deep);
 const DEEP_LIST = Object.values(SPECIES).filter(s => s.deep && !s.boss);
 
@@ -664,18 +648,22 @@ const sfx = {
 };
 
 // ---------- State game ----------
-// state: menu | egg | play | evolve | pause | dead
+// state: menu | egg | play | pause | dead
 let state = 'menu', fishes = [], corpses = [], score = 0, eaten = 0, shake = 0, lastHurt = 0, targetFish = null, targetT = 0;
-let camYaw = 0, camPitch = -.1, best = 0, starter = 'koki', hatchProg = 0, eggWob = 0, boss = null, bossTimer = 25, bossWarned = false;
+let camYaw = 0, camPitch = -.1, best = 0, hatchProg = 0, eggWob = 0, boss = null, bossTimer = 25, bossWarned = false;
 try { best = +localStorage.getItem('ikanBest') || 0; } catch {}
 const START = new V3(0, floorH(0, 0) + .25, 0);
 const player = new Fish(SPECIES.koki, .5, START);
-Object.assign(player, { stage: 0, growth: 0, stamina: 1, hp: 100, alive: false, biteCd: 0, boostT: 0, readyToasted: false });
+Object.assign(player, { level: 1, growth: 0, stamina: 1, hp: 100, alive: false, biteCd: 0, boostT: 0, readyToasted: false });
 player.m.root.visible = false;
 const egg = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 16), new THREE.MeshStandardMaterial({ color: 0xfff1d6, roughness: .35, transparent: true, opacity: .55, emissive: 0x332211 }));
 egg.scale.set(.2, .26, .2); egg.visible = false; scene.add(egg);
 const MAX_FISH = IS_TOUCH ? 58 : 88;
-const playerSize = () => TIER_BASE[player.stage] * (1 + .6 * player.growth);
+const playerSize = () => .5 * Math.pow(LEVEL_GROW, player.level - 1 + player.growth);
+function applyLevelStats() {
+  const l = player.level - 1;
+  PLAYER_SPEC.bite = 1 + l * .055; PLAYER_SPEC.tough = 1.1 + l * .025; PLAYER_SPEC.speed = 1 + l * .012;
+}
 const inTrench = p => p.x > 200;
 
 function setPlayerSpec(spec) {
@@ -724,9 +712,9 @@ function resetWorld() {
   for (const f of fishes) f.dispose(); fishes = [];
   for (const c of corpses) c.dispose(); corpses = [];
   boss = null; bossTimer = 25; lifeReset = true;
-  player.growth = 0; player.stage = 0; player.hp = 100; player.stamina = 1; player.readyToasted = false;
+  player.growth = 0; player.level = 1; player.hp = 100; player.stamina = 1; player.readyToasted = false; applyLevelStats();
   player.pos.copy(START); player.vel.set(0, 0, 0);
-  setPlayerSpec(SPECIES[starter]);
+  setPlayerSpec(PLAYER_SPEC);
   score = 0; eaten = 0; targetFish = null;
   let tries = 0; while (fishes.length < MAX_FISH && tries++ < 400) spawnGroup(12, spawnFar());
   player.m.root.visible = false;
@@ -820,12 +808,17 @@ function toast(txt, color = '#fff') {
   setTimeout(() => el.remove(), 1800);
 }
 function gainGrowth(g) {
-  player.growth = Math.min(1, player.growth + g);
+  player.growth += g * LEVEL_GAIN;
+  let up = false;
+  while (player.growth >= 1 && player.level < MAX_LEVEL) { player.growth -= 1; player.level++; up = true; }
+  if (player.level >= MAX_LEVEL) player.growth = Math.min(1, player.growth);
   player.setSize(playerSize());
-  if (player.growth >= 1 && !player.readyToasted) {
-    player.readyToasted = true;
-    if (player.stage < TIERS.length - 1) toast('🧬 Siap berevolusi! Tekan E', '#9dffcf'); else toast('👑 Ukuran maksimum!', '#ffd166');
+  if (up) {
+    applyLevelStats(); player.hp = Math.min(100, player.hp + 35);
+    emit(player.pos, 40, 0xffffff, player.size * .6, player.size * 1.5, player.size * 2, 2);
+    toast(`⬆ LEVEL ${player.level}! Ukuranmu ${player.size.toFixed(1)} m`, '#9dffcf'); sfx.evolve();
   }
+  if (player.level >= MAX_LEVEL && player.growth >= 1 && !player.readyToasted) { player.readyToasted = true; toast('👑 Level maksimum! Kamu raksasa lautan', '#ffd166'); }
 }
 function playerBite() {
   if (player.biteCd > 0 || !player.alive || state !== 'play') return;
@@ -887,7 +880,7 @@ function biteCorpse(c) {
 function biteplayer(n) {
   if (!player.alive) return;
   let dmg = 14 * Math.pow(n.size / player.size, 1.4) * n.spec.bite / (player.spec.tough || 1);
-  if (n.isBoss && player.stage >= TIERS.length - 2) dmg = Math.min(dmg, 22); // bos bisa dilawan di tahap akhir
+  if (n.isBoss && player.level >= MAX_LEVEL - 4) dmg = Math.min(dmg, 22); // bos bisa dilawan di tahap akhir
   player.hp -= dmg; lastHurt = 0; shake = Math.min(1, shake + .5 + dmg / 60);
   $('hurt').style.opacity = Math.min(1, .4 + dmg / 50);
   emit(player.pos, 18, BLOOD, player.size * .3, player.size * 1.2, 0, 1.2); sfx.hurt();
@@ -901,41 +894,10 @@ function die(by) {
   state = 'dead'; if (document.pointerLockElement) document.exitPointerLock();
   setTimeout(() => {
     $('deadTitle').textContent = `Kamu dimakan oleh ${by}!`;
-    $('dSpec').textContent = player.spec.name; $('dSize').textContent = player.size.toFixed(2) + ' m';
+    $('dSpec').textContent = player.level + ' / ' + MAX_LEVEL; $('dSize').textContent = player.size.toFixed(2) + ' m';
     $('dEaten').textContent = eaten; $('dScore').textContent = score; $('dBest').textContent = best;
     $('dead').classList.remove('hidden'); $('hud').classList.add('hidden'); $('touch').classList.add('hidden');
   }, 1300);
-}
-
-// ---------- Kartu spesies ----------
-function cardHTML(key, sel) {
-  const s = SPECIES[key], hex = c => '#' + c.toString(16).padStart(6, '0');
-  const bar = (l, v, mx) => `<div class="sb"><span>${l}</span><i><b style="width:${clamp(v / mx, .05, 1) * 100}%"></b></i></div>`;
-  return `<button class="card2${sel ? ' sel' : ''}" data-k="${key}">
-    <div class="sw" style="background:linear-gradient(180deg,${hex(s.color)} 0%,${hex(s.color)} 45%,${hex(s.belly)} 100%)"></div>
-    <div class="cn">${s.name}</div><div class="cd">${s.desc || ''}</div>
-    ${bar('Kecepatan', s.speed, 1.6)}${bar('Gigitan', s.bite, 2)}${bar('Ketahanan', s.tough || 1, 1.75)}</button>`;
-}
-function renderStarters() {
-  const box = $('starterCards'); box.innerHTML = TIERS[0].map(k => cardHTML(k, k === starter)).join('');
-  box.querySelectorAll('.card2').forEach(b => b.addEventListener('click', () => { starter = b.dataset.k; renderStarters(); }));
-}
-function openEvolve() {
-  if (state !== 'play' || !player.alive || player.growth < 1 || player.stage >= TIERS.length - 1) return;
-  state = 'evolve'; if (document.pointerLockElement) document.exitPointerLock();
-  const next = TIERS[player.stage + 1];
-  $('evoSub').textContent = `Tahap ${player.stage + 2} dari ${TIERS.length} • ukuran ±${TIER_BASE[player.stage + 1]} m`;
-  const box = $('evoCards'); box.innerHTML = next.map(k => cardHTML(k, false)).join('');
-  box.querySelectorAll('.card2').forEach(b => b.addEventListener('click', () => evolveTo(b.dataset.k)));
-  $('evo').classList.remove('hidden');
-}
-function closeEvolve() { $('evo').classList.add('hidden'); state = 'play'; }
-function evolveTo(key) {
-  player.stage++; player.growth = 0; player.readyToasted = false;
-  setPlayerSpec(SPECIES[key]); player.hp = 100;
-  closeEvolve();
-  emit(player.pos, 50, 0xffffff, player.size * .6, player.size * 1.5, player.size * 2, 2);
-  toast(`🧬 Kamu sekarang ${player.spec.name}!`, '#9dffcf'); sfx.evolve();
 }
 
 // ---------- Telur ----------
@@ -973,10 +935,8 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (state === 'play') {
     if (e.code === 'KeyF' || e.code === 'KeyJ') playerBite();
-    if (e.code === 'KeyE') openEvolve();
     if (e.code === 'Escape' || e.code === 'KeyP') pause();
   } else if (state === 'pause' && (e.code === 'Escape' || e.code === 'KeyP')) resume();
-  else if (state === 'evolve' && e.code === 'Escape') closeEvolve();
   if (e.code === 'KeyM') { muted = !muted; if (master) master.gain.value = muted ? 0 : .6; }
 });
 addEventListener('keyup', e => keys[e.code] = false);
@@ -1029,12 +989,9 @@ for (const [id, k] of [['btnBite', 'bite'], ['btnBoost', 'boost'], ['btnUp', 'up
   const off = () => { touchBtn[k] = false; el.classList.remove('on'); };
   el.addEventListener('pointerup', off); el.addEventListener('pointerleave', off); el.addEventListener('pointercancel', off);
 }
-$('evolve').addEventListener('click', openEvolve);
-$('laterBtn').addEventListener('click', closeEvolve);
 $('btnPause').addEventListener('click', () => pause());
 
 // ---------- Layar ----------
-renderStarters();
 if (IS_TOUCH) {
   $('keysTxt').innerHTML = '<b>Joystick</b> berenang • <b>Geser layar</b> arahkan (geser ke bawah = menukik)<br><b>GIGIT</b> makan • <b>⚡</b> ngebut • <b>▲▼</b> naik / turun';
   $('hatchHint').textContent = 'Ketuk layar berulang kali';
@@ -1053,7 +1010,7 @@ function begin() {
 function pause() { if (state !== 'play') return; state = 'pause'; $('pause').classList.remove('hidden'); if (document.pointerLockElement) document.exitPointerLock(); }
 function resume() { state = 'play'; $('pause').classList.add('hidden'); if (actx && actx.state === 'suspended') actx.resume(); }
 $('playBtn').addEventListener('click', begin);
-$('againBtn').addEventListener('click', () => { $('dead').classList.add('hidden'); $('start').classList.remove('hidden'); renderStarters(); if (best) $('bestTxt').textContent = 'Rekor: ' + best; state = 'menu'; });
+$('againBtn').addEventListener('click', () => { $('dead').classList.add('hidden'); $('start').classList.remove('hidden'); if (best) $('bestTxt').textContent = 'Rekor: ' + best; state = 'menu'; });
 $('resumeBtn').addEventListener('click', resume);
 
 // ---------- Update pemain & kamera ----------
@@ -1146,11 +1103,8 @@ function updateHUD(dt) {
   $('grFill').style.width = player.growth * 100 + '%';
   $('specName').textContent = player.spec.name;
   const depth = Math.max(0, Math.round(TOP - player.pos.y));
-  $('sizeTxt').textContent = `${player.size.toFixed(2)} m • Tahap ${player.stage + 1}/${TIERS.length} • ↓${depth} m`;
+  $('sizeTxt').textContent = `Level ${player.level}/${MAX_LEVEL} • ${player.size.toFixed(2)} m • ↓${depth} m`;
   $('score').textContent = score; $('eaten').textContent = eaten;
-  const ev = $('evolve'), can = player.growth >= 1 && player.stage < TIERS.length - 1 && player.alive;
-  ev.classList.toggle('hidden', !can);
-  if (can) ev.textContent = '🧬 Pilih Evolusi' + (IS_TOUCH ? '' : ' (E)');
   targetT -= .08; if (targetT <= 0) targetFish = null;
   const tg = $('target');
   if (targetFish && !targetFish.gone && targetT > 0 && !targetFish.isBoss) {
@@ -1597,7 +1551,7 @@ const clock = new THREE.Clock();
 function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), .05);
-  if (state !== 'pause' && state !== 'evolve') {
+  if (state !== 'pause') {
     uTime.value += dt;
     if (state === 'play') updatePlayer(dt);
     if (state === 'egg') updateEgg(dt);
